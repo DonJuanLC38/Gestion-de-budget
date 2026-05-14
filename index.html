@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Budget">
+<meta name="theme-color" content="#191919">
+<title>💰 Budget Mensuel</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+<script>
+  // Chargement de Chart.js avec plusieurs sources de secours.
+  // Si aucune ne marche (pas d'internet), l'app fonctionne quand même sans le graphique.
+  (function loadChart() {
+    var sources = [
+      'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js',
+      'https://unpkg.com/chart.js@4.4.0/dist/chart.umd.min.js'
+    ];
+    var idx = 0;
+    function tryNext() {
+      if (idx >= sources.length) return;
+      var s = document.createElement('script');
+      s.src = sources[idx++];
+      s.onload = function() {
+        if (typeof renderChart === 'function') {
+          var card = document.querySelector('.chart-card');
+          if (card && card.dataset.fallback) {
+            card.removeAttribute('data-fallback');
+            card.innerHTML = '<div class="chart-wrap"><canvas id="donut-chart"></canvas></div>';
+          }
+          renderChart();
+        }
+      };
+      s.onerror = tryNext;
+      document.head.appendChild(s);
+    }
+    tryNext();
+  })();
+</script>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: #191919;
+    color: #e9e9e7;
+    line-height: 1.5;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { padding: 16px 16px calc(16px + env(safe-area-inset-bottom)) 16px; padding-top: calc(16px + env(safe-area-inset-top)); }
+  h2 { margin: 0; font-size: 20px; font-weight: 700; }
+  h3 { margin: 0 0 12px; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+
+  .header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .month-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+  .month-btn { background: #2a2a2a; border: 1px solid #3a3a3a; color: #e9e9e7; width: 36px; height: 36px; border-radius: 8px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .month-btn:active { transform: scale(0.95); }
+  .month-display { flex: 1; text-align: center; font-weight: 600; font-size: 15px; color: #b8b8b6; text-transform: capitalize; }
+  .reset-btn { padding: 8px 14px; background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 8px; font-size: 13px; cursor: pointer; color: #e9e9e7; font-weight: 500; }
+  .reset-btn:active { transform: scale(0.96); }
+
+  .top-card { background: #252525; border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  .muted { font-size: 13px; color: #999; }
+  .big { font-size: 32px; font-weight: 700; margin: 4px 0 4px; }
+  .budget-detail { font-size: 13px; color: #6dd4a9; margin-bottom: 14px; font-weight: 500; min-height: 18px; }
+  .mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mini-val { font-size: 20px; font-weight: 700; margin-top: 2px; }
+  .progress-bar { height: 6px; background: #2a2a2a; border-radius: 4px; overflow: hidden; margin-top: 14px; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #1d9e75 0%, #378ADD 50%, #BA7517 80%, #e24b4a 100%); transition: width 0.4s ease; }
+  .stat-line { font-size: 13px; color: #b8b8b6; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .comparison { font-size: 12px; padding: 3px 8px; border-radius: 6px; font-weight: 600; }
+  .comparison.up { background: rgba(226, 75, 74, 0.2); color: #f0999a; }
+  .comparison.down { background: rgba(29, 158, 117, 0.2); color: #6dd4a9; }
+  .comparison.same { background: rgba(184, 184, 182, 0.15); color: #b8b8b6; }
+
+  .chart-card { background: #2a2a2a; border-radius: 14px; padding: 12px 8px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; }
+  .chart-wrap { width: 100%; max-width: 360px; }
+
+  .section { margin-bottom: 22px; }
+
+  /* Besoins essentiels = vert (toujours) */
+  #abo-list .row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; background: rgba(29, 158, 117, 0.18);
+    border: 1px solid rgba(29, 158, 117, 0.4);
+    border-radius: 10px; font-size: 15px; margin-bottom: 8px;
+    transition: all 0.2s ease;
+  }
+  #abo-list .row.paid { background: rgba(29, 158, 117, 0.45); border-color: #1d9e75; }
+  #abo-list .row.paid .amount { color: #a8e5cb; }
+
+  /* Investissement = bleu (toujours) */
+  #invest-list .row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; background: rgba(55, 138, 221, 0.18);
+    border: 1px solid rgba(55, 138, 221, 0.4);
+    border-radius: 10px; font-size: 15px; margin-bottom: 8px;
+    transition: all 0.2s ease;
+  }
+  #invest-list .row.paid { background: rgba(55, 138, 221, 0.45); border-color: #378ADD; }
+  #invest-list .row.paid .amount { color: #b5d4f4; }
+
+  /* Fallback générique */
+  .row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; background: #2a2a2a; border: 1px solid #3a3a3a;
+    border-radius: 10px; font-size: 15px; margin-bottom: 8px;
+    transition: all 0.2s ease;
+  }
+  .row.paid { box-shadow: inset 0 0 0 1px currentColor; }
+  .row label { display: flex; align-items: center; gap: 12px; cursor: pointer; flex: 1; }
+  .row input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; flex-shrink: 0; }
+  #abo-list .row input[type="checkbox"] { accent-color: #1d9e75; }
+  #invest-list .row input[type="checkbox"] { accent-color: #378ADD; }
+  .amount { font-weight: 600; font-size: 15px; }
+
+  /* Menu 3 points + section header */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
+  .section-header h3 { margin: 0; }
+  .menu-btn { background: transparent; border: 1px solid #3a3a3a; color: #b8b8b6; width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .menu-btn:active { transform: scale(0.94); background: #2a2a2a; }
+
+  /* Modal */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-backdrop.show { opacity: 1; pointer-events: auto; }
+  .modal { background: #252525; border: 1px solid #3a3a3a; border-radius: 14px; padding: 20px; max-width: 360px; width: 100%; max-height: 80vh; overflow-y: auto; transform: scale(0.95); transition: transform 0.2s; }
+  .modal-backdrop.show .modal { transform: scale(1); }
+  .modal h4 { margin: 0 0 14px; font-size: 16px; font-weight: 700; }
+  .modal-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .modal-row input[type="text"] { flex: 1; }
+  .modal-row input[type="number"] { width: 90px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .modal-actions button { flex: 1; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; }
+  .btn-save { background: #2383e2; color: white; }
+  .btn-cancel { background: #2a2a2a; color: #e9e9e7; border: 1px solid #3a3a3a !important; }
+  .btn-add-item { width: 100%; padding: 10px; background: rgba(35, 131, 226, 0.15); border: 1px dashed #2383e2; border-radius: 8px; color: #87b9f0; font-size: 13px; cursor: pointer; margin-top: 8px; font-weight: 600; }
+  .btn-add-item:active { transform: scale(0.98); }
+  .modal-row .del-item { background: transparent; border: 1px solid #3a3a3a; color: #888; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; flex-shrink: 0; }
+  .modal-row .del-item:active { color: #f0999a; border-color: #e24b4a; }
+
+  .essence-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; background: rgba(186, 117, 23, 0.15);
+    border: 1px solid rgba(186, 117, 23, 0.4); border-radius: 10px;
+    font-size: 15px; gap: 12px;
+  }
+  .essence-row input[type="number"] {
+    width: 75px; padding: 8px 10px; background: #1a1a1a;
+    border: 1px solid #3a3a3a; border-radius: 6px;
+    font-size: 15px; text-align: right; color: #e9e9e7;
+    font-family: inherit; font-weight: 600;
+    -moz-appearance: textfield;
+  }
+  .essence-row input[type="number"]::-webkit-outer-spin-button,
+  .essence-row input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .plaisir-row, .extra-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; background: #252525; border-radius: 10px;
+    font-size: 15px; margin-bottom: 6px;
+    animation: slideIn 0.25s ease;
+  }
+  .plaisir-row { background: rgba(212, 83, 126, 0.18); border: 1px solid rgba(212, 83, 126, 0.4); }
+  .plaisir-row .amount { color: #f4c0d1; }
+  .extra-row { background: rgba(127, 119, 221, 0.15); border: 1px solid rgba(127, 119, 221, 0.4); }
+  .extra-row .extra-info { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+  .extra-row .extra-name { font-weight: 600; }
+  .extra-row .extra-target { font-size: 12px; color: #b8b8b6; }
+  .extra-row .extra-target .pill { display: inline-block; padding: 1px 6px; background: rgba(127, 119, 221, 0.25); border-radius: 4px; color: #c4bff0; font-weight: 600; margin-left: 4px; }
+
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  .del { background: transparent; border: none; cursor: pointer; color: #888; padding: 6px 10px; font-size: 18px; border-radius: 6px; flex-shrink: 0; }
+  .del:active { background: rgba(226, 75, 74, 0.2); color: #f0999a; }
+
+  .add-form { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: 10px; }
+  .add-form-extra { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 10px; }
+  .add-form-extra select { grid-column: 1 / -1; }
+  input[type="text"], input[type="number"], select {
+    padding: 12px 14px; background: #2a2a2a; border: 1px solid #3a3a3a;
+    border-radius: 8px; font-size: 15px; color: #e9e9e7;
+    font-family: inherit; min-width: 0;
+  }
+  select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; padding-right: 36px; }
+  input:focus, select:focus { outline: 2px solid #378ADD; outline-offset: -1px; }
+  button.primary {
+    padding: 12px 16px; background: #2383e2; color: white; border: none;
+    border-radius: 8px; font-size: 18px; cursor: pointer; font-weight: 600;
+    min-width: 50px;
+  }
+  button.primary.purple { background: #7F77DD; }
+  button.primary:active { transform: scale(0.96); opacity: 0.9; }
+  .add-amount { width: 75px; }
+
+  .empty { font-size: 14px; color: #888; padding: 14px; text-align: center; background: #252525; border-radius: 10px; }
+  .empty.extras { background: rgba(127, 119, 221, 0.08); }
+
+  .checkmark-pop { animation: pop 0.3s ease; }
+  @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #1d9e75; color: white; padding: 12px 20px; border-radius: 10px;
+    font-size: 14px; font-weight: 600; z-index: 1000;
+    opacity: 0; transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+  .toast.danger { background: #e24b4a; }
+  .toast.warning { background: #BA7517; }
+  .toast.purple { background: #7F77DD; }
+
+  .sound-toggle {
+    position: absolute; top: calc(16px + env(safe-area-inset-top)); right: 16px;
+    background: #2a2a2a; border: 1px solid #3a3a3a; color: #e9e9e7;
+    width: 38px; height: 38px; border-radius: 10px; font-size: 16px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    z-index: 10;
+  }
+
+  .extras-summary { font-size: 12px; color: #c4bff0; background: rgba(127, 119, 221, 0.12); padding: 8px 12px; border-radius: 8px; margin-top: 8px; border: 1px solid rgba(127, 119, 221, 0.3); }
+</style>
+</head>
+<body>
+
+<button class="sound-toggle" id="sound-toggle" onclick="toggleSound()" aria-label="Sons">🔊</button>
+
+<div class="header-row" style="padding-right: 50px;">
+  <h2>💰 Budget Mensuel</h2>
+</div>
+
+<div class="month-bar">
+  <button class="month-btn" onclick="changeMonth(-1)" aria-label="Mois précédent">‹</button>
+  <div class="month-display" id="month-display"></div>
+  <button class="month-btn" onclick="changeMonth(1)" aria-label="Mois suivant">›</button>
+  <button class="reset-btn" onclick="resetMonth()">↻</button>
+</div>
+
+<div class="top-card">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+    <div style="flex: 1;">
+      <div class="muted">Budget total</div>
+      <div class="big" id="total-budget">950 €</div>
+    </div>
+    <button class="menu-btn" onclick="openBudgetEdit('salary')" aria-label="Modifier salaire">⋮</button>
+  </div>
+  <div class="budget-detail" id="budget-detail"></div>
+  <div class="mini-grid">
+    <div>
+      <div class="muted">Dépensé</div>
+      <div id="spent-amount" class="mini-val">0 €</div>
+    </div>
+    <div>
+      <div class="muted">Reste</div>
+      <div id="remaining-amount" class="mini-val" style="color: #6dd4a9;">950 €</div>
+    </div>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+  </div>
+  <div class="stat-line">
+    <span id="percent-stat">0% du budget utilisé</span>
+    <span class="comparison same" id="comparison-badge">—</span>
+  </div>
+</div>
+
+<div class="chart-card">
+  <div class="chart-wrap"><canvas id="donut-chart"></canvas></div>
+</div>
+
+<div class="section">
+  <h3>💜 Extras reçus — <span id="extras-total">0</span> €</h3>
+  <div id="extras-list"></div>
+  <div class="add-form-extra">
+    <input id="extra-name" type="text" placeholder="Source (prime, cadeau, vente...)" />
+    <input id="extra-amount" class="add-amount" type="number" placeholder="€" min="0" step="1" inputmode="numeric" />
+    <select id="extra-target">
+      <option value="">→ Affecté à... (où va l'argent ?)</option>
+      <option value="Matelas de secours">🛏️ Matelas de secours</option>
+      <option value="Trade Republic">📈 Trade Republic</option>
+      <option value="Plaisir">🎉 Plaisir</option>
+      <option value="Cash / liquide">💵 Cash / liquide</option>
+      <option value="Autre épargne">🏦 Autre épargne</option>
+      <option value="Pas encore affecté">❓ Pas encore affecté</option>
+    </select>
+    <button class="primary purple" onclick="addExtra()" style="grid-column: 1 / -1;">+ Ajouter un extra</button>
+  </div>
+  <div class="extras-summary" id="extras-summary" style="display: none;"></div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <h3>🎉 Plaisir — <span id="plaisir-total">0</span> / <span id="plaisir-budget">325</span> €</h3>
+    <button class="menu-btn" onclick="openBudgetEdit('plaisir')" aria-label="Modifier">⋮</button>
+  </div>
+  <div id="plaisir-list"></div>
+  <div class="add-form">
+    <input id="plaisir-name" type="text" placeholder="Ex: resto, ciné..." />
+    <input id="plaisir-amount" class="add-amount" type="number" placeholder="€" min="0" step="1" inputmode="numeric" />
+    <button class="primary" onclick="addPlaisir()">+</button>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <h3>🏠 Besoins essentiels — <span id="abo-total">0</span> / <span id="abo-budget">305</span> €</h3>
+    <button class="menu-btn" onclick="openListEdit('abos', 'Besoins essentiels')" aria-label="Modifier">⋮</button>
+  </div>
+  <div id="abo-list"></div>
+  <div class="essence-row" style="margin-top: 8px;">
+    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; flex: 1;">
+      <input type="checkbox" id="essence-check" style="width: 22px; height: 22px; accent-color: #BA7517;" />
+      <span>⛽ Essence</span>
+    </label>
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <input type="number" id="essence-amount" value="0" min="0" max="200" step="1" inputmode="numeric" />
+      <span class="muted">/ <span id="essence-budget-display">120</span> €</span>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <h3>💸 Investissement — <span id="invest-total">0</span> / <span id="invest-budget">200</span> €</h3>
+    <button class="menu-btn" onclick="openListEdit('invests', 'Investissement')" aria-label="Modifier">⋮</button>
+  </div>
+  <div id="invest-list"></div>
+</div>
+
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal" id="modal">
+    <h4 id="modal-title">Modifier</h4>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-save" onclick="saveModal()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'budget_mensuel_v5';
+const CONFIG_KEY = 'budget_config_v2';
+const DEFAULT_CONFIG = { salary: 950, plaisirBudget: 325, aboBudget: 305, investBudget: 200, essenceBudget: 120 };
+let config = loadConfig();
+
+function loadConfig() {
+  try {
+    const saved = localStorage.getItem(CONFIG_KEY);
+    if (saved) return Object.assign({}, DEFAULT_CONFIG, JSON.parse(saved));
+  } catch (e) {}
+  return Object.assign({}, DEFAULT_CONFIG);
+}
+function saveConfig() {
+  try { localStorage.setItem(CONFIG_KEY, JSON.stringify(config)); } catch (e) {}
+}
+const monthNames = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
+const defaultMonthState = () => ({
+  abos: [
+    { name: 'Loyer', amount: 200, paid: false },
+    { name: 'Apple', amount: 15, paid: false },
+    { name: 'Claude', amount: 20, paid: false },
+    { name: 'FitnessPark', amount: 30, paid: false },
+    { name: 'Notion', amount: 15, paid: false },
+    { name: 'Téléphone', amount: 25, paid: false }
+  ],
+  invests: [
+    { name: 'Trade Republic', amount: 50, paid: false },
+    { name: 'Matelas de secours (CM)', amount: 150, paid: false }
+  ],
+  plaisirs: [],
+  extras: [],
+  essencePaid: false,
+  essenceAmount: 0,
+  budgets: {
+    salary: config.salary,
+    aboBudget: config.aboBudget,
+    essenceBudget: config.essenceBudget,
+    plaisirBudget: config.plaisirBudget,
+    investBudget: config.investBudget
+  }
+});
+
+let allData = loadAll();
+const now = new Date();
+let currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+let soundOn = localStorage.getItem('budget_sound') !== 'off';
+
+function loadAll() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const data = JSON.parse(saved);
+      for (const k in data) {
+        if (!data[k].extras) data[k].extras = [];
+        // Migration : ajouter budgets si absent (ancien format)
+        if (!data[k].budgets) {
+          data[k].budgets = {
+            salary: config.salary,
+            aboBudget: config.aboBudget,
+            essenceBudget: config.essenceBudget,
+            plaisirBudget: config.plaisirBudget,
+            investBudget: config.investBudget
+          };
+        }
+      }
+      return data;
+    }
+  } catch (e) {}
+  return {};
+}
+
+function saveAll() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(allData)); } catch (e) {}
+}
+
+function getState() {
+  if (!allData[currentMonthKey]) allData[currentMonthKey] = defaultMonthState();
+  const s = allData[currentMonthKey];
+  const def = defaultMonthState();
+  // Réparation : si les listes sont absentes ou vides, on remet les valeurs par défaut
+  if (!Array.isArray(s.abos) || s.abos.length === 0) s.abos = def.abos;
+  if (!Array.isArray(s.invests) || s.invests.length === 0) s.invests = def.invests;
+  if (!Array.isArray(s.plaisirs)) s.plaisirs = [];
+  if (!Array.isArray(s.extras)) s.extras = [];
+  if (typeof s.essenceAmount !== 'number') s.essenceAmount = 0;
+  if (typeof s.essencePaid !== 'boolean') s.essencePaid = false;
+  if (!s.budgets) {
+    s.budgets = {
+      salary: config.salary,
+      aboBudget: config.aboBudget,
+      essenceBudget: config.essenceBudget,
+      plaisirBudget: config.plaisirBudget,
+      investBudget: config.investBudget
+    };
+  }
+  return s;
+}
+
+function getPreviousMonthKey() {
+  const [y, m] = currentMonthKey.split('-').map(Number);
+  const prevDate = new Date(y, m - 2, 1);
+  return `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function changeMonth(delta) {
+  const [y, m] = currentMonthKey.split('-').map(Number);
+  const newDate = new Date(y, m - 1 + delta, 1);
+  currentMonthKey = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`;
+  renderAll();
+  playSound('tick');
+}
+
+function resetMonth() {
+  if (confirm(`Réinitialiser ${getMonthLabel()} ?`)) {
+    allData[currentMonthKey] = defaultMonthState();
+    saveAll();
+    renderAll();
+    showToast('Mois réinitialisé', 'warning');
+    playSound('reset');
+  }
+}
+
+function getMonthLabel() {
+  const [y, m] = currentMonthKey.split('-').map(Number);
+  return `${monthNames[m - 1]} ${y}`;
+}
+
+let audioCtx;
+function getAudioCtx() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+  }
+  return audioCtx;
+}
+
+function playSound(type) {
+  if (!soundOn) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  const sounds = {
+    check: { freq: 880, dur: 0.08, type: 'sine', gain: 0.15 },
+    uncheck: { freq: 440, dur: 0.06, type: 'sine', gain: 0.1 },
+    add: { freq: 660, dur: 0.1, type: 'triangle', gain: 0.15 },
+    money: { freq: 780, dur: 0.12, type: 'triangle', gain: 0.18 },
+    delete: { freq: 220, dur: 0.08, type: 'square', gain: 0.08 },
+    tick: { freq: 1000, dur: 0.04, type: 'sine', gain: 0.08 },
+    reset: { freq: 330, dur: 0.15, type: 'triangle', gain: 0.12 }
+  };
+  const s = sounds[type] || sounds.tick;
+  o.type = s.type;
+  o.frequency.value = s.freq;
+  g.gain.setValueAtTime(s.gain, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + s.dur);
+  o.start();
+  o.stop(ctx.currentTime + s.dur);
+  if (type === 'check' || type === 'money') {
+    const second = type === 'money' ? 1100 : 1320;
+    setTimeout(() => {
+      const o2 = ctx.createOscillator();
+      const g2 = ctx.createGain();
+      o2.connect(g2); g2.connect(ctx.destination);
+      o2.type = 'sine'; o2.frequency.value = second;
+      g2.gain.setValueAtTime(0.12, ctx.currentTime);
+      g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+      o2.start(); o2.stop(ctx.currentTime + 0.08);
+    }, 60);
+  }
+}
+
+function toggleSound() {
+  soundOn = !soundOn;
+  localStorage.setItem('budget_sound', soundOn ? 'on' : 'off');
+  document.getElementById('sound-toggle').textContent = soundOn ? '🔊' : '🔇';
+  if (soundOn) playSound('check');
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (type || '');
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function renderList(items, containerId, key) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  items.forEach((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'row' + (item.paid ? ' paid' : '');
+    row.innerHTML = `
+      <label>
+        <input type="checkbox" ${item.paid ? 'checked' : ''} onchange="togglePaid('${key}', ${i}, this.checked, this)" />
+        <span>${escapeHtml(item.name)}</span>
+      </label>
+      <span class="amount">${item.amount} €</span>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function togglePaid(key, i, checked, el) {
+  const state = getState();
+  state[key][i].paid = checked;
+  saveAll();
+  playSound(checked ? 'check' : 'uncheck');
+  const row = el.closest('.row');
+  if (row) { row.classList.add('checkmark-pop'); setTimeout(() => row.classList.remove('checkmark-pop'), 300); }
+  renderChart();
+}
+
+function renderPlaisirs() {
+  const state = getState();
+  const list = document.getElementById('plaisir-list');
+  list.innerHTML = '';
+  if (state.plaisirs.length === 0) {
+    list.innerHTML = '<div class="empty">Aucune dépense plaisir 🌟</div>';
+    return;
+  }
+  state.plaisirs.forEach((p, i) => {
+    const row = document.createElement('div');
+    row.className = 'plaisir-row';
+    row.innerHTML = `
+      <span>${escapeHtml(p.name)}</span>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span class="amount">${p.amount} €</span>
+        <button class="del" onclick="removePlaisir(${i})" aria-label="Supprimer">✕</button>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function renderExtras() {
+  const state = getState();
+  const list = document.getElementById('extras-list');
+  const summary = document.getElementById('extras-summary');
+  list.innerHTML = '';
+
+  if (state.extras.length === 0) {
+    list.innerHTML = '<div class="empty extras">Aucun extra ce mois 💜</div>';
+    summary.style.display = 'none';
+    return;
+  }
+
+  state.extras.forEach((e, i) => {
+    const row = document.createElement('div');
+    row.className = 'extra-row';
+    const targetDisplay = e.target ? `→<span class="pill">${escapeHtml(e.target)}</span>` : '<span style="opacity:0.6">→ non affecté</span>';
+    row.innerHTML = `
+      <div class="extra-info">
+        <span class="extra-name">${escapeHtml(e.name)}</span>
+        <span class="extra-target">${targetDisplay}</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span class="amount" style="color: #c4bff0;">+${e.amount} €</span>
+        <button class="del" onclick="removeExtra(${i})" aria-label="Supprimer">✕</button>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+
+  const byTarget = {};
+  state.extras.forEach(e => {
+    const k = e.target || 'Non affecté';
+    byTarget[k] = (byTarget[k] || 0) + e.amount;
+  });
+  const total = state.extras.reduce((s, e) => s + e.amount, 0);
+  const parts = Object.entries(byTarget).map(([k, v]) => `${k}: ${v}€`).join(' · ');
+  summary.textContent = `Répartition: ${parts}`;
+  summary.style.display = 'block';
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function addPlaisir() {
+  const state = getState();
+  const name = document.getElementById('plaisir-name').value.trim();
+  const amount = parseFloat(document.getElementById('plaisir-amount').value);
+  if (name && amount > 0) {
+    state.plaisirs.push({ name, amount: Math.round(amount) });
+    document.getElementById('plaisir-name').value = '';
+    document.getElementById('plaisir-amount').value = '';
+    saveAll();
+    playSound('add');
+    renderPlaisirs();
+    renderChart();
+    const total = state.plaisirs.reduce((s, p) => s + p.amount, 0);
+    if (total > state.budgets.plaisirBudget) showToast('⚠️ Budget plaisir dépassé !', 'danger');
+  }
+}
+
+function removePlaisir(i) {
+  const state = getState();
+  state.plaisirs.splice(i, 1);
+  saveAll();
+  playSound('delete');
+  renderPlaisirs();
+  renderChart();
+}
+
+function addExtra() {
+  const state = getState();
+  const name = document.getElementById('extra-name').value.trim();
+  const amount = parseFloat(document.getElementById('extra-amount').value);
+  const target = document.getElementById('extra-target').value;
+  if (name && amount > 0) {
+    state.extras.push({ name, amount: Math.round(amount), target });
+    document.getElementById('extra-name').value = '';
+    document.getElementById('extra-amount').value = '';
+    document.getElementById('extra-target').value = '';
+    saveAll();
+    playSound('money');
+    renderExtras();
+    renderChart();
+    showToast(`+${Math.round(amount)} € ajoutés au budget`, 'purple');
+  }
+}
+
+function removeExtra(i) {
+  const state = getState();
+  state.extras.splice(i, 1);
+  saveAll();
+  playSound('delete');
+  renderExtras();
+  renderChart();
+}
+
+document.getElementById('plaisir-amount').addEventListener('keydown', e => { if (e.key === 'Enter') addPlaisir(); });
+document.getElementById('plaisir-name').addEventListener('keydown', e => { if (e.key === 'Enter') addPlaisir(); });
+document.getElementById('extra-amount').addEventListener('keydown', e => { if (e.key === 'Enter') addExtra(); });
+document.getElementById('extra-name').addEventListener('keydown', e => { if (e.key === 'Enter') addExtra(); });
+
+document.getElementById('essence-check').addEventListener('change', e => {
+  const state = getState();
+  state.essencePaid = e.target.checked;
+  if (e.target.checked && state.essenceAmount === 0) {
+    state.essenceAmount = 120;
+    document.getElementById('essence-amount').value = 120;
+  }
+  if (!e.target.checked) {
+    state.essenceAmount = 0;
+    document.getElementById('essence-amount').value = 0;
+  }
+  saveAll();
+  playSound(e.target.checked ? 'check' : 'uncheck');
+  renderChart();
+});
+
+document.getElementById('essence-amount').addEventListener('input', e => {
+  const state = getState();
+  let val = parseFloat(e.target.value) || 0;
+  if (val < 0) val = 0;
+  state.essenceAmount = Math.round(val);
+  state.essencePaid = val > 0;
+  document.getElementById('essence-check').checked = state.essencePaid;
+  saveAll();
+  renderChart();
+});
+
+let chart;
+function renderChart() {
+  try {
+    _renderChartImpl();
+  } catch (e) {
+    console.warn('Chart non disponible:', e);
+  }
+}
+function _renderChartImpl() {
+  const state = getState();
+  const aboPaid = state.abos.filter(a => a.paid).reduce((s, a) => s + a.amount, 0);
+  const investPaid = state.invests.filter(a => a.paid).reduce((s, a) => s + a.amount, 0);
+  const plaisirSum = state.plaisirs.reduce((s, p) => s + p.amount, 0);
+  const extrasSum = state.extras.reduce((s, e) => s + e.amount, 0);
+  const essence = state.essenceAmount;
+  const totalSpent = aboPaid + investPaid + plaisirSum + essence;
+  const totalBudget = state.budgets.salary + extrasSum;
+  const remaining = Math.max(0, totalBudget - totalSpent);
+  const percent = Math.min(100, Math.round((totalSpent / totalBudget) * 100));
+
+  document.getElementById('total-budget').textContent = totalBudget + ' €';
+  const detail = document.getElementById('budget-detail');
+  if (extrasSum > 0) {
+    detail.textContent = `${state.budgets.salary} € + ${extrasSum} € d'extras 💜`;
+  } else {
+    detail.textContent = '';
+  }
+
+  // Mise à jour des budgets affichés dans les titres
+  document.getElementById('plaisir-budget').textContent = state.budgets.plaisirBudget;
+  document.getElementById('abo-budget').textContent = state.budgets.aboBudget;
+  document.getElementById('invest-budget').textContent = state.budgets.investBudget;
+  const essBudget = document.getElementById('essence-budget-display');
+  if (essBudget) essBudget.textContent = state.budgets.essenceBudget;
+
+  document.getElementById('abo-total').textContent = Math.round(aboPaid);
+  document.getElementById('invest-total').textContent = Math.round(investPaid);
+  document.getElementById('plaisir-total').textContent = Math.round(plaisirSum);
+  document.getElementById('extras-total').textContent = Math.round(extrasSum);
+  document.getElementById('spent-amount').textContent = Math.round(totalSpent) + ' €';
+  const rem = totalBudget - totalSpent;
+  const remEl = document.getElementById('remaining-amount');
+  remEl.textContent = Math.round(rem) + ' €';
+  remEl.style.color = rem < 0 ? '#f0999a' : '#6dd4a9';
+
+  document.getElementById('progress-fill').style.width = percent + '%';
+  document.getElementById('percent-stat').textContent = percent + '% du budget utilisé';
+
+  const prevState = allData[getPreviousMonthKey()];
+  const badge = document.getElementById('comparison-badge');
+  if (prevState) {
+    const prevTotal = prevState.abos.filter(a => a.paid).reduce((s, a) => s + a.amount, 0)
+      + prevState.invests.filter(a => a.paid).reduce((s, a) => s + a.amount, 0)
+      + prevState.plaisirs.reduce((s, p) => s + p.amount, 0)
+      + (prevState.essenceAmount || 0);
+    const diff = totalSpent - prevTotal;
+    if (Math.abs(diff) < 1) {
+      badge.textContent = '= mois dernier';
+      badge.className = 'comparison same';
+    } else if (diff > 0) {
+      badge.textContent = `↑ +${Math.round(diff)} € vs mois -1`;
+      badge.className = 'comparison up';
+    } else {
+      badge.textContent = `↓ ${Math.round(diff)} € vs mois -1`;
+      badge.className = 'comparison down';
+    }
+  } else {
+    badge.textContent = 'Pas de mois -1';
+    badge.className = 'comparison same';
+  }
+
+  const data = [aboPaid, essence, plaisirSum, investPaid, remaining];
+  const spentForCenter = totalSpent;
+
+  // Si Chart.js n'est pas chargé (pas d'internet), on s'arrête là.
+  // Tout le reste de l'app (cases, totaux) fonctionne quand même.
+  if (typeof Chart === 'undefined') {
+    const chartCard = document.querySelector('.chart-card');
+    if (chartCard && !chartCard.dataset.fallback) {
+      chartCard.dataset.fallback = '1';
+      chartCard.innerHTML = '<div style="text-align:center; color:#888; font-size:13px; padding:20px;">📊 Le graphique s\'affichera<br>quand tu auras une connexion internet</div>';
+    }
+    return;
+  }
+
+  if (chart) {
+    chart.data.datasets[0].data = data;
+    chart._centerSpent = spentForCenter;
+    chart._centerBudget = totalBudget;
+    chart.update('none');
+  } else {
+    const colors = ['#378ADD', '#BA7517', '#D4537E', '#1D9E75', '#555'];
+
+    // Plugin: texte au centre + étiquettes avec flèches
+    const centerAndLabelsPlugin = {
+      id: 'centerAndLabels',
+      afterDraw(c) {
+        const { ctx, chartArea } = c;
+        const cx = (chartArea.left + chartArea.right) / 2;
+        const cy = (chartArea.top + chartArea.bottom) / 2;
+
+        // Texte au centre : montant dépensé
+        const spent = c._centerSpent || 0;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#999';
+        ctx.font = '600 11px -apple-system, system-ui, sans-serif';
+        ctx.fillText('Dépensé', cx, cy - 16);
+        ctx.fillStyle = '#e9e9e7';
+        ctx.font = '700 22px -apple-system, system-ui, sans-serif';
+        ctx.fillText(Math.round(spent) + ' €', cx, cy + 6);
+        ctx.fillStyle = '#777';
+        ctx.font = '500 10px -apple-system, system-ui, sans-serif';
+        ctx.fillText('/ ' + Math.round(c._centerBudget || 0) + ' €', cx, cy + 22);
+        ctx.restore();
+
+        // Étiquettes avec flèches sur chaque tranche
+        const meta = c.getDatasetMeta(0);
+        const dataset = c.data.datasets[0];
+        const labels = c.data.labels;
+        const total = dataset.data.reduce((s, v) => s + v, 0);
+        if (total === 0) return;
+
+        ctx.save();
+        ctx.font = '600 10px -apple-system, system-ui, sans-serif';
+
+        meta.data.forEach((arc, i) => {
+          const value = dataset.data[i];
+          if (value <= 0) return;
+          const pct = value / total;
+          if (pct < 0.04) return; // tranches trop petites = pas d'étiquette
+
+          const angle = (arc.startAngle + arc.endAngle) / 2;
+          const outerRadius = arc.outerRadius;
+          const x1 = cx + Math.cos(angle) * outerRadius;
+          const y1 = cy + Math.sin(angle) * outerRadius;
+          const x2 = cx + Math.cos(angle) * (outerRadius + 10);
+          const y2 = cy + Math.sin(angle) * (outerRadius + 10);
+          const isRight = Math.cos(angle) >= 0;
+          const x3 = x2 + (isRight ? 14 : -14);
+
+          // Ligne du connecteur
+          ctx.strokeStyle = colors[i];
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.lineTo(x3, y2);
+          ctx.stroke();
+
+          // Petit point au bout
+          ctx.fillStyle = colors[i];
+          ctx.beginPath();
+          ctx.arc(x3, y2, 2, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Texte (nom + montant)
+          ctx.fillStyle = colors[i];
+          ctx.textAlign = isRight ? 'left' : 'right';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(labels[i], x3 + (isRight ? 4 : -4), y2 - 1);
+          ctx.fillStyle = '#e9e9e7';
+          ctx.textBaseline = 'top';
+          ctx.font = '700 11px -apple-system, system-ui, sans-serif';
+          ctx.fillText(Math.round(value) + ' €', x3 + (isRight ? 4 : -4), y2 + 1);
+          ctx.font = '600 10px -apple-system, system-ui, sans-serif';
+        });
+        ctx.restore();
+      }
+    };
+
+    const ctxEl = document.getElementById('donut-chart').getContext('2d');
+    chart = new Chart(ctxEl, {
+      type: 'doughnut',
+      data: {
+        labels: ['Essentiels', 'Essence', 'Plaisir', 'Investis.', 'Reste'],
+        datasets: [{
+          data: data,
+          backgroundColor: colors,
+          borderWidth: 0,
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: '68%',
+        layout: { padding: 50 },
+        animation: { animateRotate: true, duration: 600 },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#2a2a2a',
+            titleColor: '#fff',
+            bodyColor: '#e9e9e7',
+            borderColor: '#3a3a3a',
+            borderWidth: 1,
+            padding: 10,
+            callbacks: { label: c => c.label + ': ' + Math.round(c.parsed) + ' €' }
+          }
+        }
+      },
+      plugins: [centerAndLabelsPlugin]
+    });
+    chart._centerSpent = spentForCenter;
+    chart._centerBudget = totalBudget;
+    chart.update('none');
+  }
+}
+
+// ============ MODAL DE MODIFICATION ============
+let modalContext = null;
+
+function openModal(title, bodyHtml, context) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = bodyHtml;
+  modalContext = context;
+  document.getElementById('modal-backdrop').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal-backdrop').classList.remove('show');
+  modalContext = null;
+}
+
+document.getElementById('modal-backdrop').addEventListener('click', (e) => {
+  if (e.target.id === 'modal-backdrop') closeModal();
+});
+
+// Édition du budget global (salaire) et budgets de catégories
+function openBudgetEdit(type) {
+  const state = getState();
+  if (type === 'salary') {
+    const body = `
+      <p class="muted" style="margin: 0 0 14px;">Modifie le salaire et les budgets pour <strong>${getMonthLabel()}</strong> uniquement. Les mois précédents ne changent pas.</p>
+      <div class="modal-row"><span style="flex:1;">Salaire</span><input type="number" id="cfg-salary" value="${state.budgets.salary}" min="0" step="10" inputmode="numeric" /></div>
+      <p class="muted" style="margin: 14px 0 8px; font-size: 12px;">Budgets par catégorie :</p>
+      <div class="modal-row"><span style="flex:1;">🏠 Essentiels</span><input type="number" id="cfg-abo" value="${state.budgets.aboBudget}" min="0" step="5" inputmode="numeric" /></div>
+      <div class="modal-row"><span style="flex:1;">⛽ Essence</span><input type="number" id="cfg-essence" value="${state.budgets.essenceBudget}" min="0" step="5" inputmode="numeric" /></div>
+      <div class="modal-row"><span style="flex:1;">🎉 Plaisir</span><input type="number" id="cfg-plaisir" value="${state.budgets.plaisirBudget}" min="0" step="5" inputmode="numeric" /></div>
+      <div class="modal-row"><span style="flex:1;">💸 Investis.</span><input type="number" id="cfg-invest" value="${state.budgets.investBudget}" min="0" step="5" inputmode="numeric" /></div>
+      <label style="display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 10px; background: #2a2a2a; border-radius: 8px; cursor: pointer;">
+        <input type="checkbox" id="cfg-apply-future" style="width: 18px; height: 18px; accent-color: #2383e2;" checked />
+        <span style="font-size: 13px;">Appliquer aussi aux mois futurs (par défaut)</span>
+      </label>
+    `;
+    openModal('Modifier le budget', body, { type: 'salary' });
+  } else if (type === 'plaisir') {
+    const body = `
+      <p class="muted" style="margin: 0 0 14px;">Budget plaisir pour <strong>${getMonthLabel()}</strong>.</p>
+      <div class="modal-row"><span style="flex:1;">🎉 Plaisir max</span><input type="number" id="cfg-plaisir" value="${state.budgets.plaisirBudget}" min="0" step="5" inputmode="numeric" /></div>
+      <label style="display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 10px; background: #2a2a2a; border-radius: 8px; cursor: pointer;">
+        <input type="checkbox" id="cfg-apply-future" style="width: 18px; height: 18px; accent-color: #2383e2;" checked />
+        <span style="font-size: 13px;">Appliquer aussi aux mois futurs</span>
+      </label>
+    `;
+    openModal('Modifier budget Plaisir', body, { type: 'plaisir' });
+  }
+}
+
+// Édition d'une liste (abos ou invests)
+function openListEdit(key, label) {
+  const state = getState();
+  const items = state[key];
+  let rows = items.map((it, i) => `
+    <div class="modal-row" data-i="${i}">
+      <input type="text" value="${escapeHtml(it.name)}" data-field="name" />
+      <input type="number" value="${it.amount}" min="0" step="5" inputmode="numeric" data-field="amount" />
+      <button class="del-item" onclick="modalDelItem(${i})" aria-label="Supprimer">✕</button>
+    </div>
+  `).join('');
+  const body = `
+    <p class="muted" style="margin: 0 0 14px;">Modifie le nom ou le montant. Tu peux supprimer ou ajouter des lignes.</p>
+    <div id="modal-items">${rows}</div>
+    <button class="btn-add-item" onclick="modalAddItem()">+ Ajouter une ligne</button>
+  `;
+  openModal(`Modifier ${label}`, body, { type: 'list', key });
+}
+
+function modalDelItem(i) {
+  const row = document.querySelector(`#modal-items .modal-row[data-i="${i}"]`);
+  if (row) row.remove();
+}
+
+function modalAddItem() {
+  const container = document.getElementById('modal-items');
+  const existingIndices = [...container.querySelectorAll('.modal-row')].map(r => parseInt(r.dataset.i));
+  const newIdx = existingIndices.length ? Math.max(...existingIndices) + 1 : 0;
+  const div = document.createElement('div');
+  div.className = 'modal-row';
+  div.dataset.i = 'new-' + newIdx;
+  div.innerHTML = `
+    <input type="text" placeholder="Nom" data-field="name" />
+    <input type="number" placeholder="€" min="0" step="5" inputmode="numeric" data-field="amount" />
+    <button class="del-item" onclick="this.parentElement.remove()" aria-label="Supprimer">✕</button>
+  `;
+  container.appendChild(div);
+  div.querySelector('input[data-field="name"]').focus();
+}
+
+function saveModal() {
+  if (!modalContext) return;
+  const state = getState();
+  if (modalContext.type === 'salary') {
+    const newBudgets = {
+      salary: Math.max(0, parseInt(document.getElementById('cfg-salary').value) || 0),
+      aboBudget: Math.max(0, parseInt(document.getElementById('cfg-abo').value) || 0),
+      essenceBudget: Math.max(0, parseInt(document.getElementById('cfg-essence').value) || 0),
+      plaisirBudget: Math.max(0, parseInt(document.getElementById('cfg-plaisir').value) || 0),
+      investBudget: Math.max(0, parseInt(document.getElementById('cfg-invest').value) || 0)
+    };
+    state.budgets = newBudgets;
+    const applyFuture = document.getElementById('cfg-apply-future');
+    if (applyFuture && applyFuture.checked) {
+      config = Object.assign({}, config, newBudgets);
+      saveConfig();
+    }
+    showToast('Budget mis à jour', 'purple');
+  } else if (modalContext.type === 'plaisir') {
+    const val = Math.max(0, parseInt(document.getElementById('cfg-plaisir').value) || 0);
+    state.budgets.plaisirBudget = val;
+    const applyFuture = document.getElementById('cfg-apply-future');
+    if (applyFuture && applyFuture.checked) {
+      config.plaisirBudget = val;
+      saveConfig();
+    }
+    showToast('Budget plaisir mis à jour', 'purple');
+  } else if (modalContext.type === 'list') {
+    const rows = document.querySelectorAll('#modal-items .modal-row');
+    const newItems = [];
+    rows.forEach((row) => {
+      const name = row.querySelector('input[data-field="name"]').value.trim();
+      const amount = parseFloat(row.querySelector('input[data-field="amount"]').value) || 0;
+      if (name && amount > 0) {
+        const oldIdx = parseInt(row.dataset.i);
+        const wasPaid = !isNaN(oldIdx) && state[modalContext.key][oldIdx] ? state[modalContext.key][oldIdx].paid : false;
+        newItems.push({ name, amount: Math.round(amount), paid: wasPaid });
+      }
+    });
+    state[modalContext.key] = newItems;
+    showToast('Liste mise à jour', 'purple');
+  }
+  saveAll();
+  playSound('money');
+  closeModal();
+  renderAll();
+}
+
+function renderAll() {
+  const state = getState();
+  document.getElementById('month-display').textContent = getMonthLabel();
+  renderList(state.abos, 'abo-list', 'abos');
+  renderList(state.invests, 'invest-list', 'invests');
+  renderPlaisirs();
+  renderExtras();
+  document.getElementById('essence-check').checked = state.essencePaid;
+  document.getElementById('essence-amount').value = state.essenceAmount;
+  document.getElementById('sound-toggle').textContent = soundOn ? '🔊' : '🔇';
+  // renderChart est protégé : même s'il plante, les cases restent affichées
+  try { renderChart(); } catch (e) { console.warn('Chart non disponible:', e); }
+  saveAll();
+}
+
+renderAll();
+
+document.addEventListener('touchstart', function unlock() {
+  getAudioCtx();
+}, { once: true });
+</script>
+</body>
+</html>
