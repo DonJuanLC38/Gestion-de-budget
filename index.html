@@ -368,8 +368,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const STORAGE_KEY = 'budget_mensuel_v7';
-const CONFIG_KEY = 'budget_config_v5';
+const STORAGE_KEY = 'budget_mensuel_v8';
+const CONFIG_KEY = 'budget_config_v6';
 const DEFAULT_CONFIG = { salary: 950, plaisirBudget: 285, aboBudget: 465, investBudget: 200, essenceBudget: 160 };
 let config = loadConfig();
 
@@ -385,31 +385,39 @@ function saveConfig() {
 }
 const monthNames = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
-const defaultMonthState = () => ({
-  abos: [
-    { name: 'Loyer', amount: 200, paid: false },
-    { name: 'Apple', amount: 15, paid: false },
-    { name: 'Claude', amount: 20, paid: false },
-    { name: 'FitnessPark', amount: 30, paid: false },
-    { name: 'Notion', amount: 15, paid: false },
-    { name: 'Téléphone', amount: 25, paid: false }
-  ],
-  invests: [
-    { name: 'Trade Republic', amount: 50, done: 0 },
-    { name: 'Matelas de secours (CM)', amount: 150, done: 0 }
-  ],
-  plaisirs: [],
-  extras: [],
-  essencePaid: false,
-  essenceAmount: 0,
-  budgets: {
-    salary: config.salary,
-    aboBudget: config.aboBudget,
-    essenceBudget: config.essenceBudget,
-    plaisirBudget: config.plaisirBudget,
-    investBudget: config.investBudget
-  }
-});
+const defaultMonthState = () => {
+  const defaultAbos = (config.defaultLists && Array.isArray(config.defaultLists.abos))
+    ? config.defaultLists.abos.map(it => ({ name: it.name, amount: it.amount, paid: false }))
+    : [
+        { name: 'Loyer', amount: 200, paid: false },
+        { name: 'Apple', amount: 15, paid: false },
+        { name: 'Claude', amount: 20, paid: false },
+        { name: 'FitnessPark', amount: 30, paid: false },
+        { name: 'Notion', amount: 15, paid: false },
+        { name: 'Téléphone', amount: 25, paid: false }
+      ];
+  const defaultInvests = (config.defaultLists && Array.isArray(config.defaultLists.invests))
+    ? config.defaultLists.invests.map(it => ({ name: it.name, amount: it.amount, done: 0 }))
+    : [
+        { name: 'Trade Republic', amount: 50, done: 0 },
+        { name: 'Matelas de secours (CM)', amount: 150, done: 0 }
+      ];
+  return {
+    abos: defaultAbos,
+    invests: defaultInvests,
+    plaisirs: [],
+    extras: [],
+    essencePaid: false,
+    essenceAmount: 0,
+    budgets: {
+      salary: config.salary,
+      aboBudget: config.aboBudget,
+      essenceBudget: config.essenceBudget,
+      plaisirBudget: config.plaisirBudget,
+      investBudget: config.investBudget
+    }
+  };
+};
 
 let allData = loadAll();
 const now = new Date();
@@ -581,13 +589,22 @@ function renderList(items, containerId, key) {
   });
 }
 
+function getInvestTarget(item) {
+  // Palier effectif d'une ligne d'invest = montant cible + extras affectés à cette ligne
+  if (!item || !item.name) return item ? item.amount : 0;
+  const state = getState();
+  const extrasForLine = state.extras.filter(e => e.target === item.name).reduce((s, e) => s + e.amount, 0);
+  return (item.amount || 0) + extrasForLine;
+}
+
 function renderInvestList() {
   const state = getState();
   const container = document.getElementById('invest-list');
   container.innerHTML = '';
   state.invests.forEach((item, i) => {
     const done = item.done || 0;
-    const isDone = done >= item.amount && item.amount > 0;
+    const target = getInvestTarget(item);
+    const isDone = done >= target && target > 0;
     const row = document.createElement('div');
     row.className = 'invest-row' + (isDone ? ' done' : '');
     row.innerHTML = `
@@ -595,7 +612,7 @@ function renderInvestList() {
       <div class="invest-input-wrap">
         <input type="number" value="${done}" min="0" step="5" inputmode="numeric"
                oninput="updateInvestDone(${i}, this.value)" />
-        <span class="invest-target">/ ${item.amount} €</span>
+        <span class="invest-target">/ ${target} €</span>
       </div>
     `;
     container.appendChild(row);
@@ -606,9 +623,10 @@ function updateInvestDone(i, value) {
   const state = getState();
   let val = parseFloat(value) || 0;
   if (val < 0) val = 0;
-  const wasDone = (state.invests[i].done || 0) >= state.invests[i].amount;
+  const target = getInvestTarget(state.invests[i]);
+  const wasDone = (state.invests[i].done || 0) >= target;
   state.invests[i].done = Math.round(val);
-  const isDone = state.invests[i].done >= state.invests[i].amount && state.invests[i].amount > 0;
+  const isDone = state.invests[i].done >= target && target > 0;
   saveAll();
   // Son quand on atteint le palier
   if (isDone && !wasDone) playSound('check');
@@ -713,7 +731,9 @@ function addPlaisir() {
     renderPlaisirs();
     renderChart();
     const total = state.plaisirs.reduce((s, p) => s + p.amount, 0);
-    if (total > state.budgets.plaisirBudget) showToast('⚠️ Budget plaisir dépassé !', 'danger');
+    const plaisirExtrasSum = state.extras.filter(e => e.target === 'Plaisir').reduce((s, e) => s + e.amount, 0);
+    const plaisirBudgetEff = state.budgets.plaisirBudget + plaisirExtrasSum;
+    if (total > plaisirBudgetEff) showToast('⚠️ Budget plaisir dépassé !', 'danger');
   }
 }
 
@@ -750,6 +770,7 @@ function addExtra() {
   saveAll();
   playSound('money');
   renderExtras();
+  renderInvestList();
   renderChart();
   showToast(`+${Math.round(amount)} € ajoutés au budget`, 'purple');
 }
@@ -760,6 +781,7 @@ function removeExtra(i) {
   saveAll();
   playSound('delete');
   renderExtras();
+  renderInvestList();
   renderChart();
 }
 
@@ -824,6 +846,21 @@ function _renderChartImpl() {
   const plaisirSum = state.plaisirs.reduce((s, p) => s + p.amount, 0);
   const extrasSum = state.extras.reduce((s, e) => s + e.amount, 0);
   const essence = state.essenceAmount;
+
+  // Calcul des extras par cible (pour ajuster les budgets dynamiquement)
+  const extrasByTarget = {};
+  state.extras.forEach(e => {
+    const t = e.target || '';
+    extrasByTarget[t] = (extrasByTarget[t] || 0) + e.amount;
+  });
+  const plaisirExtras = extrasByTarget['Plaisir'] || 0;
+  const matelasExtras = extrasByTarget['Matelas de secours'] || 0;
+  const tradeExtras = extrasByTarget['Trade Republic'] || 0;
+
+  // Budgets effectifs (budget de base + extras affectés à cette catégorie)
+  const plaisirBudgetEff = state.budgets.plaisirBudget + plaisirExtras;
+  const investBudgetEff = state.budgets.investBudget + matelasExtras + tradeExtras;
+
   // L'essence est comptée DANS les besoins essentiels
   const aboPaid = aboPaidRaw + essence;
   const totalSpent = aboPaid + investPaid + plaisirSum;
@@ -839,18 +876,18 @@ function _renderChartImpl() {
     detail.textContent = '';
   }
 
-  // Mise à jour des budgets affichés dans les titres
-  document.getElementById('plaisir-budget').textContent = state.budgets.plaisirBudget;
+  // Mise à jour des budgets affichés dans les titres (avec extras affectés)
+  document.getElementById('plaisir-budget').textContent = plaisirBudgetEff;
   document.getElementById('abo-budget').textContent = state.budgets.aboBudget;
-  document.getElementById('invest-budget').textContent = state.budgets.investBudget;
+  document.getElementById('invest-budget').textContent = investBudgetEff;
   const essBudget = document.getElementById('essence-budget-display');
   if (essBudget) essBudget.textContent = state.budgets.essenceBudget;
 
-  // Pourcentages : part de chaque catégorie sur le salaire total
-  const sal = state.budgets.salary || 1;
-  document.getElementById('abo-pct').textContent = Math.round((state.budgets.aboBudget / sal) * 100) + '%';
-  document.getElementById('plaisir-pct').textContent = Math.round((state.budgets.plaisirBudget / sal) * 100) + '%';
-  document.getElementById('invest-pct').textContent = Math.round((state.budgets.investBudget / sal) * 100) + '%';
+  // Pourcentages : part de chaque catégorie sur le budget total (salaire + extras)
+  const totalRef = totalBudget || 1;
+  document.getElementById('abo-pct').textContent = Math.round((state.budgets.aboBudget / totalRef) * 100) + '%';
+  document.getElementById('plaisir-pct').textContent = Math.round((plaisirBudgetEff / totalRef) * 100) + '%';
+  document.getElementById('invest-pct').textContent = Math.round((investBudgetEff / totalRef) * 100) + '%';
 
   document.getElementById('abo-total').textContent = Math.round(aboPaid);
   document.getElementById('invest-total').textContent = Math.round(investPaid);
@@ -1098,6 +1135,10 @@ function openListEdit(key, label) {
     <p class="muted" style="margin: 0 0 14px;">${helpText}</p>
     <div id="modal-items">${rows}</div>
     <button class="btn-add-item" onclick="modalAddItem()">+ Ajouter une ligne</button>
+    <label style="display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 10px; background: #2a2a2a; border-radius: 8px; cursor: pointer;">
+      <input type="checkbox" id="list-apply-future" style="width: 18px; height: 18px; accent-color: #2383e2;" checked />
+      <span style="font-size: 13px;">Appliquer aux mois futurs</span>
+    </label>
   `;
   openModal(`Modifier ${label}`, body, { type: 'list', key });
 }
@@ -1172,6 +1213,17 @@ function saveModal() {
       }
     });
     state[modalContext.key] = newItems;
+    // Appliquer aux mois futurs : on stocke un template dans la config
+    const applyFuture = document.getElementById('list-apply-future');
+    if (applyFuture && applyFuture.checked) {
+      if (!config.defaultLists) config.defaultLists = {};
+      // On stocke uniquement le nom et le montant cible (pas l'état coché/done)
+      config.defaultLists[modalContext.key] = newItems.map(it => ({
+        name: it.name,
+        amount: it.amount
+      }));
+      saveConfig();
+    }
     showToast('Liste mise à jour', 'purple');
   }
   saveAll();
