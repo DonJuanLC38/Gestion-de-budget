@@ -28,7 +28,7 @@
           var card = document.querySelector('.chart-card');
           if (card && card.dataset.fallback) {
             card.removeAttribute('data-fallback');
-            card.innerHTML = '<div class="chart-wrap"><canvas id="donut-chart"></canvas></div>';
+            card.innerHTML = '<button class="chart-toggle" id="chart-toggle" onclick="toggleChartView()">📊 Détail</button><div class="chart-inner"><div class="chart-wrap"><canvas id="donut-chart"></canvas></div></div>';
           }
           renderChart();
         }
@@ -43,71 +43,162 @@
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     margin: 0; padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    background: #191919;
-    color: #e9e9e7;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", sans-serif;
+    background: #1F1F1F;
+    color: #EFEFEF;
     line-height: 1.5;
     overscroll-behavior: none;
     -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
   }
-  body { padding: 16px 16px calc(16px + env(safe-area-inset-bottom)) 16px; padding-top: calc(16px + env(safe-area-inset-top)); }
-  h2 { margin: 0; font-size: 20px; font-weight: 700; }
-  h3 { margin: 0 0 12px; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  body { padding: 20px 18px calc(20px + env(safe-area-inset-bottom)) 18px; padding-top: calc(20px + env(safe-area-inset-top)); }
+  h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  h3 { margin: 0 0 12px; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 6px; color: #E9E9E7; letter-spacing: -0.01em; }
 
-  .header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  .month-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
-  .month-btn { background: #2a2a2a; border: 1px solid #3a3a3a; color: #e9e9e7; width: 36px; height: 36px; border-radius: 8px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .month-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; }
+  .month-btn { background: #2B2B2B; border: 1px solid #363636; color: #EFEFEF; width: 36px; height: 36px; border-radius: 10px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s ease; }
+  .month-btn:hover { background: #333333; }
   .month-btn:active { transform: scale(0.95); }
-  .month-display { flex: 1; text-align: center; font-weight: 600; font-size: 15px; color: #b8b8b6; text-transform: capitalize; }
-  .reset-btn { padding: 8px 14px; background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 8px; font-size: 13px; cursor: pointer; color: #e9e9e7; font-weight: 500; }
+  .month-display { flex: 1; text-align: center; font-weight: 600; font-size: 14px; color: #9B9B9B; text-transform: capitalize; letter-spacing: 0.02em; }
+  .month-display-btn {
+    background: #2B2B2B; border: 1px solid #363636; border-radius: 10px;
+    padding: 8px 14px; height: 36px; cursor: pointer; font-family: inherit;
+    transition: background 0.15s ease;
+  }
+  .month-display-btn:hover { background: #333333; }
+  .month-display-btn:active { transform: scale(0.98); }
+  .reset-btn { padding: 8px 14px; background: #2B2B2B; border: 1px solid #363636; border-radius: 10px; font-size: 13px; cursor: pointer; color: #EFEFEF; font-weight: 500; transition: background 0.15s ease; }
+  .reset-btn:hover { background: #333333; }
   .reset-btn:active { transform: scale(0.96); }
 
-  .top-card { background: #252525; border-radius: 14px; padding: 18px; margin-bottom: 16px; }
-  .muted { font-size: 13px; color: #999; }
-  .big { font-size: 32px; font-weight: 700; margin: 4px 0 4px; }
-  .budget-detail { font-size: 13px; color: #6dd4a9; margin-bottom: 14px; font-weight: 500; min-height: 18px; }
-  .mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .mini-val { font-size: 20px; font-weight: 700; margin-top: 2px; }
-  .progress-bar { height: 6px; background: #2a2a2a; border-radius: 4px; overflow: hidden; margin-top: 14px; }
-  .progress-fill { height: 100%; background: linear-gradient(90deg, #1d9e75 0%, #378ADD 50%, #BA7517 80%, #e24b4a 100%); transition: width 0.4s ease; }
-  .stat-line { font-size: 13px; color: #b8b8b6; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .comparison { font-size: 12px; padding: 3px 8px; border-radius: 6px; font-weight: 600; }
-  .comparison.up { background: rgba(226, 75, 74, 0.2); color: #f0999a; }
-  .comparison.down { background: rgba(29, 158, 117, 0.2); color: #6dd4a9; }
-  .comparison.same { background: rgba(184, 184, 182, 0.15); color: #b8b8b6; }
+  .top-card { background: #262626; border-radius: 16px; padding: 22px; margin-bottom: 18px; border: 1px solid #2E2E2E; }
+  .muted { font-size: 12px; color: #8F8F8F; letter-spacing: 0.01em; text-transform: uppercase; font-weight: 600; }
+  .big { font-size: 34px; font-weight: 700; margin: 6px 0 4px; letter-spacing: -0.03em; }
+  .budget-detail { font-size: 13px; color: #7EDCB0; margin-bottom: 16px; font-weight: 500; min-height: 18px; }
+  .mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .mini-val { font-size: 20px; font-weight: 700; margin-top: 4px; letter-spacing: -0.02em; }
+  .progress-bar { height: 5px; background: #333333; border-radius: 4px; overflow: hidden; margin-top: 16px; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #2CB584 0%, #4E9BE3 50%, #DA9848 80%, #E24B4A 100%); transition: width 0.4s ease; border-radius: 4px; }
+  .stat-line { font-size: 12px; color: #9B9B9B; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .comparison { font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 600; letter-spacing: 0.02em; }
+  .comparison.up { background: rgba(226, 75, 74, 0.15); color: #F0999A; }
+  .comparison.down { background: rgba(126, 220, 176, 0.15); color: #7EDCB0; }
+  .comparison.same { background: rgba(155, 155, 155, 0.12); color: #9B9B9B; }
 
-  .chart-card { background: #2a2a2a; border-radius: 14px; padding: 12px 8px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; }
+  .chart-card { background: #262626; border-radius: 16px; padding: 14px 8px; margin-bottom: 22px; position: relative; border: 1px solid #2E2E2E; }
+  .chart-card .chart-inner { display: flex; align-items: center; justify-content: center; }
+  .chart-toggle {
+    position: absolute; top: 10px; right: 10px;
+    background: #1F1F1F; border: 1px solid #363636; color: #9B9B9B;
+    padding: 7px 13px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 4px;
+    transition: all 0.15s ease;
+  }
+  .chart-toggle:hover { color: #EFEFEF; }
+  .chart-toggle:active { transform: scale(0.95); }
+  .chart-toggle.active { background: #4E9BE3; color: white; border-color: #4E9BE3; }
+
+  /* Vue plein écran */
+  .fullview-backdrop {
+    position: fixed; inset: 0; background: #1F1F1F;
+    z-index: 200; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s; overflow-y: auto;
+    padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+    padding-top: calc(20px + env(safe-area-inset-top));
+  }
+  .fullview-backdrop.show { opacity: 1; pointer-events: auto; }
+  .fullview-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 22px; padding-bottom: 14px;
+    border-bottom: 1px solid #333333;
+  }
+  .fullview-header h3 { margin: 0; font-size: 18px; letter-spacing: -0.02em; }
+  .fullview-close {
+    background: #2B2B2B; border: 1px solid #363636; color: #EFEFEF;
+    padding: 8px 14px; border-radius: 10px; font-size: 14px; cursor: pointer;
+    font-family: inherit; font-weight: 600;
+  }
+  .fullview-close:active { transform: scale(0.96); }
+  .fullview-stats {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    margin-bottom: 22px;
+  }
+  .fullview-stat-card {
+    background: #262626; border-radius: 12px; padding: 14px; border: 1px solid #2E2E2E;
+  }
+  .fullview-stat-card .stat-label { font-size: 11px; color: #8F8F8F; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; }
+  .fullview-stat-card .stat-value { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+  .fullview-type-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; background: rgba(220, 102, 144, 0.15);
+    border: 1px solid rgba(220, 102, 144, 0.3);
+    border-radius: 10px; margin-top: 14px; margin-bottom: 8px;
+    font-size: 13px; font-weight: 700; color: #F4C0D1; letter-spacing: -0.01em;
+  }
+  .fullview-plaisir-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; background: #252525; border-radius: 10px;
+    font-size: 14px; margin-bottom: 6px;
+  }
+  .fullview-plaisir-row .plaisir-info { flex: 1; min-width: 0; }
+  .fullview-plaisir-row .plaisir-name-line { font-weight: 600; word-break: break-word; }
+  .fullview-plaisir-row .plaisir-date { font-size: 11px; color: #888; margin-top: 2px; }
   .chart-wrap { width: 100%; max-width: 360px; }
 
   .section { margin-bottom: 22px; }
 
   /* Besoins essentiels = vert (toujours) */
+  /* Besoins essentiels — couleur dynamique */
+  :root {
+    --color-essentiels: #2CB584;
+    --color-essentiels-light: #78E8B7;
+    --color-essentiels-text: #7EDCB0;
+    --glow-essentiels: none;
+    --color-plaisir: #DC6690;
+    --color-plaisir-light: #F1B2CC;
+    --color-plaisir-text: #F4C0D1;
+    --glow-plaisir: none;
+    --color-invest: #4E9BE3;
+    --color-invest-light: #93CEF5;
+    --color-invest-text: #B5D4F4;
+    --glow-invest: none;
+    --color-extras: #8A80E0;
+    --color-extras-light: #B8B0F0;
+    --color-extras-text: #C4BFF0;
+    --glow-extras: none;
+  }
+
   #abo-list .row {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 16px; background: rgba(29, 158, 117, 0.18);
-    border: 1px solid rgba(29, 158, 117, 0.4);
+    padding: 14px 16px;
+    background: color-mix(in srgb, var(--color-essentiels) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-essentiels) 40%, transparent);
+    box-shadow: var(--glow-essentiels);
     border-radius: 10px; font-size: 15px; margin-bottom: 8px;
     transition: all 0.2s ease;
   }
   #abo-list .row.paid {
-    background: rgba(29, 158, 117, 0.45) !important;
+    background: color-mix(in srgb, var(--color-essentiels) 45%, transparent) !important;
     border: 2px solid #ffffff !important;
     box-shadow: 0 0 8px rgba(255, 255, 255, 0.3) !important;
   }
-  #abo-list .row.paid .amount { color: #a8e5cb; }
+  #abo-list .row.paid .amount { color: var(--color-essentiels-light); }
 
-  /* Investissement = bleu, avec champ chiffre par ligne */
+  /* Investissement — couleur dynamique */
   #invest-list .invest-row {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 16px; background: rgba(55, 138, 221, 0.18);
-    border: 1px solid rgba(55, 138, 221, 0.4);
+    padding: 14px 16px;
+    background: color-mix(in srgb, var(--color-invest) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-invest) 40%, transparent);
+    box-shadow: var(--glow-invest);
     border-radius: 10px; font-size: 15px; margin-bottom: 8px;
     transition: all 0.2s ease; gap: 12px;
   }
   #invest-list .invest-row.done {
     border: 2px solid #ffffff;
     box-shadow: 0 0 8px rgba(255, 255, 255, 0.25);
-    background: rgba(55, 138, 221, 0.32);
+    background: color-mix(in srgb, var(--color-invest) 32%, transparent);
   }
   #invest-list .invest-row .invest-name { flex: 1; }
   #invest-list .invest-row .invest-input-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
@@ -120,7 +211,7 @@
   }
   #invest-list .invest-row input[type="number"]::-webkit-outer-spin-button,
   #invest-list .invest-row input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-  #invest-list .invest-row .invest-target { font-size: 13px; color: #b5d4f4; min-width: 52px; }
+  #invest-list .invest-row .invest-target { font-size: 13px; color: var(--color-invest-text); min-width: 52px; }
 
   /* Fallback générique */
   .row {
@@ -131,7 +222,7 @@
   }
   .row label { display: flex; align-items: center; gap: 12px; cursor: pointer; flex: 1; }
   .row input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; flex-shrink: 0; }
-  #abo-list .row input[type="checkbox"] { accent-color: #1d9e75; }
+  #abo-list .row input[type="checkbox"] { accent-color: var(--color-essentiels); }
   .amount { font-weight: 600; font-size: 15px; }
   .pct-badge { font-size: 12px; font-weight: 700; color: #b8b8b6; background: #2a2a2a; padding: 2px 7px; border-radius: 6px; margin-left: 2px; }
 
@@ -187,19 +278,40 @@
     font-size: 15px; margin-bottom: 6px;
     animation: slideIn 0.25s ease;
   }
-  .plaisir-row { background: rgba(212, 83, 126, 0.18); border: 1px solid rgba(212, 83, 126, 0.4); }
-  .plaisir-row .amount { color: #f4c0d1; }
-  .extra-row { background: rgba(127, 119, 221, 0.15); border: 1px solid rgba(127, 119, 221, 0.4); }
+  .plaisir-row {
+    background: color-mix(in srgb, var(--color-plaisir) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-plaisir) 40%, transparent);
+    box-shadow: var(--glow-plaisir);
+  }
+  .plaisir-row .amount { color: var(--color-plaisir-text); }
+  .extra-row {
+    background: color-mix(in srgb, var(--color-extras) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-extras) 40%, transparent);
+    box-shadow: var(--glow-extras);
+  }
   .extra-row .extra-info { display: flex; flex-direction: column; gap: 2px; flex: 1; }
   .extra-row .extra-name { font-weight: 600; }
   .extra-row .extra-target { font-size: 12px; color: #b8b8b6; }
-  .extra-row .extra-target .pill { display: inline-block; padding: 1px 6px; background: rgba(127, 119, 221, 0.25); border-radius: 4px; color: #c4bff0; font-weight: 600; margin-left: 4px; }
+  .extra-row .extra-target .pill { display: inline-block; padding: 1px 6px; background: color-mix(in srgb, var(--color-extras) 25%, transparent); border-radius: 4px; color: var(--color-extras-text); font-weight: 600; margin-left: 4px; }
 
   @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
   .del { background: transparent; border: none; cursor: pointer; color: #888; padding: 6px 10px; font-size: 18px; border-radius: 6px; flex-shrink: 0; }
   .del:active { background: rgba(226, 75, 74, 0.2); color: #f0999a; }
 
   .add-form { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: 10px; }
+  .plaisir-add-form { display: grid; grid-template-columns: 1fr 80px; grid-template-rows: auto auto; gap: 8px; margin-bottom: 12px; }
+  .plaisir-add-form input[type="text"] { grid-column: 1; grid-row: 1; }
+  .plaisir-add-form input[type="number"] { grid-column: 2; grid-row: 1; }
+  .plaisir-add-form select { grid-column: 1; grid-row: 2; }
+  .plaisir-add-form button.primary { grid-column: 2; grid-row: 2; padding: 12px; }
+  .see-all-btn {
+    display: block; width: 100%; margin-top: 10px;
+    padding: 12px; background: rgba(212, 83, 126, 0.15);
+    border: 1px dashed rgba(212, 83, 126, 0.5); border-radius: 10px;
+    color: #f4c0d1; font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: inherit; text-align: center;
+  }
+  .see-all-btn:active { transform: scale(0.98); background: rgba(212, 83, 126, 0.25); }
   .add-form-extra { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 10px; }
   .add-form-extra select { grid-column: 1 / -1; }
   input[type="text"], input[type="number"], select {
@@ -257,9 +369,9 @@
 </div>
 
 <div class="month-bar">
-  <button class="month-btn" onclick="changeMonth(-1)" aria-label="Mois précédent">‹</button>
-  <div class="month-display" id="month-display"></div>
-  <button class="month-btn" onclick="changeMonth(1)" aria-label="Mois suivant">›</button>
+  <button class="month-display month-display-btn" id="month-display" onclick="openMonthPicker()"></button>
+  <button class="reset-btn" onclick="openMonthPicker()" style="padding: 8px 12px;" title="Sélectionner un mois">📅</button>
+  <button class="reset-btn" onclick="openColorPicker()" style="padding: 8px 12px;" title="Couleurs">🎨</button>
   <button class="reset-btn" onclick="resetMonth()">↻</button>
 </div>
 
@@ -292,7 +404,10 @@
 </div>
 
 <div class="chart-card">
-  <div class="chart-wrap"><canvas id="donut-chart"></canvas></div>
+  <button class="chart-toggle" id="chart-toggle" onclick="toggleChartView()">📊 Détail</button>
+  <div class="chart-inner">
+    <div class="chart-wrap"><canvas id="donut-chart"></canvas></div>
+  </div>
 </div>
 
 <div class="section">
@@ -320,12 +435,22 @@
     <h3>🎉 Plaisir — <span id="plaisir-total">0</span> / <span id="plaisir-budget">285</span> € <span class="pct-badge" id="plaisir-pct"></span></h3>
     <button class="menu-btn" onclick="openBudgetEdit('plaisir')" aria-label="Modifier">⋮</button>
   </div>
-  <div id="plaisir-list"></div>
-  <div class="add-form">
-    <input id="plaisir-name" type="text" placeholder="Ex: resto, ciné..." />
+  <div class="plaisir-add-form">
+    <input id="plaisir-name" type="text" placeholder="Ex: pizza, ciné..." />
     <input id="plaisir-amount" class="add-amount" type="number" placeholder="€" min="0" step="1" inputmode="numeric" />
+    <select id="plaisir-type">
+      <option value="">Type...</option>
+      <option value="sortie">🍻 Sortie</option>
+      <option value="shopping">🛍️ Shopping</option>
+      <option value="loisirs">🎮 Loisirs</option>
+      <option value="cadeau">🎁 Cadeau</option>
+      <option value="voyage">✈️ Voyage</option>
+      <option value="autre">📌 Autre</option>
+    </select>
     <button class="primary" onclick="addPlaisir()">+</button>
   </div>
+  <div id="plaisir-list"></div>
+  <button id="plaisir-see-all" class="see-all-btn" onclick="openPlaisirFullView()" style="display:none;">Voir toutes les dépenses (<span id="plaisir-count">0</span>)</button>
 </div>
 
 <div class="section">
@@ -341,7 +466,7 @@
     </label>
     <div style="display: flex; align-items: center; gap: 6px;">
       <input type="number" id="essence-amount" value="0" min="0" max="250" step="1" inputmode="numeric" />
-      <span class="muted">/ <span id="essence-budget-display">160</span> €</span>
+      <span class="muted">/ <span id="essence-budget-display">0</span> €</span>
     </div>
   </div>
 </div>
@@ -352,6 +477,15 @@
     <button class="menu-btn" onclick="openListEdit('invests', 'Investissement')" aria-label="Modifier">⋮</button>
   </div>
   <div id="invest-list"></div>
+</div>
+
+<div class="fullview-backdrop" id="fullview-backdrop">
+  <div class="fullview-header">
+    <h3>🎉 Toutes tes dépenses plaisir</h3>
+    <button class="fullview-close" onclick="closePlaisirFullView()">✕ Fermer</button>
+  </div>
+  <div class="fullview-stats" id="fullview-stats"></div>
+  <div id="fullview-content"></div>
 </div>
 
 <div class="modal-backdrop" id="modal-backdrop">
@@ -368,9 +502,102 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const STORAGE_KEY = 'budget_mensuel_v8';
-const CONFIG_KEY = 'budget_config_v6';
-const DEFAULT_CONFIG = { salary: 950, plaisirBudget: 285, aboBudget: 465, investBudget: 200, essenceBudget: 160 };
+const STORAGE_KEY = 'budget_mensuel_v12';
+const CONFIG_KEY = 'budget_config_v10';
+const PLAISIR_TYPES = [
+  { key: 'sortie', label: 'Sortie', shade: 0 },
+  { key: 'shopping', label: 'Shopping', shade: 1 },
+  { key: 'loisirs', label: 'Loisirs', shade: 2 },
+  { key: 'cadeau', label: 'Cadeau', shade: 3 },
+  { key: 'voyage', label: 'Voyage', shade: 4 },
+  { key: 'autre', label: 'Autre', shade: 5 }
+];
+const DEFAULT_CONFIG = { salary: 0, plaisirBudget: 0, aboBudget: 0, investBudget: 0, essenceBudget: 0 };
+
+// Palette de 8 couleurs (comme Notion) × 3 styles (Standard / Néon / Pastel)
+const COLOR_HUES = [
+  { key: 'gris',    label: 'Gris' },
+  { key: 'rouge',   label: 'Rouge' },
+  { key: 'orange',  label: 'Orange' },
+  { key: 'jaune',   label: 'Jaune' },
+  { key: 'vert',    label: 'Vert' },
+  { key: 'bleu',    label: 'Bleu' },
+  { key: 'violet',  label: 'Violet' },
+  { key: 'rose',    label: 'Rose' }
+];
+
+const COLOR_STYLES = ['standard', 'neon', 'pastel'];
+
+// Table complète : hue × style → { main, light, text, glow }
+const COLOR_PALETTES = {
+  gris: {
+    standard: { main: '#8F8F8F', light: '#C0C0C0', text: '#C0C0C0', glow: false },
+    neon:     { main: '#E0E0E0', light: '#FFFFFF', text: '#E0E0E0', glow: true },
+    pastel:   { main: '#C8C8C8', light: '#DDDDDD', text: '#D0D0D0', glow: false }
+  },
+  rouge: {
+    standard: { main: '#E24B4A', light: '#F09190', text: '#F0999A', glow: false },
+    neon:     { main: '#FF3355', light: '#FF7788', text: '#FF3355', glow: true },
+    pastel:   { main: '#F0BFBE', light: '#F7D5D5', text: '#F2C4C4', glow: false }
+  },
+  orange: {
+    standard: { main: '#DA9848', light: '#F0C48A', text: '#F0C48A', glow: false },
+    neon:     { main: '#FF6B00', light: '#FF9E4D', text: '#FF6B00', glow: true },
+    pastel:   { main: '#F0D0A8', light: '#F5DEC0', text: '#F0D5B0', glow: false }
+  },
+  jaune: {
+    standard: { main: '#D4B747', light: '#EBD588', text: '#EBD588', glow: false },
+    neon:     { main: '#FFEE00', light: '#FFF566', text: '#FFEE00', glow: true },
+    pastel:   { main: '#EEE0B0', light: '#F5EACC', text: '#EFE3B8', glow: false }
+  },
+  vert: {
+    standard: { main: '#2CB584', light: '#78E8B7', text: '#7EDCB0', glow: false },
+    neon:     { main: '#00FF88', light: '#66FFB0', text: '#00FF88', glow: true },
+    pastel:   { main: '#A8D8C0', light: '#C8E8D5', text: '#B8E0CB', glow: false }
+  },
+  bleu: {
+    standard: { main: '#4E9BE3', light: '#93CEF5', text: '#B5D4F4', glow: false },
+    neon:     { main: '#00E5FF', light: '#66F2FF', text: '#00E5FF', glow: true },
+    pastel:   { main: '#B8D8F0', light: '#D0E4F5', text: '#C8DEF3', glow: false }
+  },
+  violet: {
+    standard: { main: '#8A80E0', light: '#B8B0F0', text: '#C4BFF0', glow: false },
+    neon:     { main: '#B026FF', light: '#D470FF', text: '#B026FF', glow: true },
+    pastel:   { main: '#C8C0EC', light: '#DDD5F2', text: '#D5CDF0', glow: false }
+  },
+  rose: {
+    standard: { main: '#DC6690', light: '#F1B2CC', text: '#F4C0D1', glow: false },
+    neon:     { main: '#FF3EA5', light: '#FF7BC0', text: '#FF3EA5', glow: true },
+    pastel:   { main: '#F4C0D1', light: '#FADAE3', text: '#F8D0DC', glow: false }
+  }
+};
+
+// Config par défaut : chaque catégorie a sa hue et son style
+const DEFAULT_CATEGORY_STYLES = {
+  essentiels: { hue: 'vert', style: 'standard' },
+  plaisir:    { hue: 'rose', style: 'standard' },
+  invest:     { hue: 'bleu', style: 'standard' },
+  extras:     { hue: 'violet', style: 'standard' }
+};
+
+function getColorFor(category) {
+  const cfg = (config.categoryStyles && config.categoryStyles[category]) || DEFAULT_CATEGORY_STYLES[category];
+  // Support ancien format (juste 'standard' au lieu d'objet)
+  const hue = (typeof cfg === 'object') ? cfg.hue : DEFAULT_CATEGORY_STYLES[category].hue;
+  const style = (typeof cfg === 'object') ? cfg.style : cfg;
+  return (COLOR_PALETTES[hue] && COLOR_PALETTES[hue][style]) || COLOR_PALETTES[DEFAULT_CATEGORY_STYLES[category].hue].standard;
+}
+
+function applyCategoryColors() {
+  const root = document.documentElement;
+  ['essentiels', 'plaisir', 'invest', 'extras'].forEach(cat => {
+    const c = getColorFor(cat);
+    root.style.setProperty(`--color-${cat}`, c.main);
+    root.style.setProperty(`--color-${cat}-light`, c.light);
+    root.style.setProperty(`--color-${cat}-text`, c.text);
+    root.style.setProperty(`--glow-${cat}`, c.glow ? `0 0 12px ${c.main}` : 'none');
+  });
+}
 let config = loadConfig();
 
 function loadConfig() {
@@ -388,20 +615,10 @@ const monthNames = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juil
 const defaultMonthState = () => {
   const defaultAbos = (config.defaultLists && Array.isArray(config.defaultLists.abos))
     ? config.defaultLists.abos.map(it => ({ name: it.name, amount: it.amount, paid: false }))
-    : [
-        { name: 'Loyer', amount: 200, paid: false },
-        { name: 'Apple', amount: 15, paid: false },
-        { name: 'Claude', amount: 20, paid: false },
-        { name: 'FitnessPark', amount: 30, paid: false },
-        { name: 'Notion', amount: 15, paid: false },
-        { name: 'Téléphone', amount: 25, paid: false }
-      ];
+    : [];
   const defaultInvests = (config.defaultLists && Array.isArray(config.defaultLists.invests))
     ? config.defaultLists.invests.map(it => ({ name: it.name, amount: it.amount, done: 0 }))
-    : [
-        { name: 'Trade Republic', amount: 50, done: 0 },
-        { name: 'Matelas de secours (CM)', amount: 150, done: 0 }
-      ];
+    : [];
   return {
     abos: defaultAbos,
     invests: defaultInvests,
@@ -457,8 +674,8 @@ function getState() {
   const s = allData[currentMonthKey];
   const def = defaultMonthState();
   // Réparation : si les listes sont absentes ou vides, on remet les valeurs par défaut
-  if (!Array.isArray(s.abos) || s.abos.length === 0) s.abos = def.abos;
-  if (!Array.isArray(s.invests) || s.invests.length === 0) s.invests = def.invests;
+  if (!Array.isArray(s.abos)) s.abos = [];
+  if (!Array.isArray(s.invests)) s.invests = [];
   if (!Array.isArray(s.plaisirs)) s.plaisirs = [];
   if (!Array.isArray(s.extras)) s.extras = [];
   if (typeof s.essenceAmount !== 'number') s.essenceAmount = 0;
@@ -488,10 +705,53 @@ function getPreviousMonthKey() {
   return `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function hasMonthContent(monthKey) {
+  const s = allData[monthKey];
+  if (!s) return false;
+  // Un mois a du contenu s'il a au moins un abo, invest, plaisir, extra, ou de l'essence
+  const hasAbos = Array.isArray(s.abos) && s.abos.length > 0;
+  const hasInvests = Array.isArray(s.invests) && s.invests.length > 0;
+  const hasPlaisirs = Array.isArray(s.plaisirs) && s.plaisirs.length > 0;
+  const hasExtras = Array.isArray(s.extras) && s.extras.length > 0;
+  const hasEssence = (s.essenceAmount || 0) > 0;
+  return hasAbos || hasInvests || hasPlaisirs || hasExtras || hasEssence;
+}
+
+function getCurrentRealMonthKey() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+}
+
 function changeMonth(delta) {
   const [y, m] = currentMonthKey.split('-').map(Number);
   const newDate = new Date(y, m - 1 + delta, 1);
-  currentMonthKey = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`;
+  const newKey = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`;
+  const currentReal = getCurrentRealMonthKey();
+
+  // Vers le passé : autorisé seulement si le mois cible a du contenu
+  if (delta < 0 && newKey < currentReal && !hasMonthContent(newKey)) {
+    showToast('Aucun mois précédent avec des données', 'warning');
+    playSound('uncheck');
+    return;
+  }
+  // Vers le futur : autorisé seulement si le mois cible a du contenu OU c'est un mois futur "vide" (permet planification)
+  // Mais on limite : pas plus de 1 mois dans le futur si vide
+  if (delta > 0 && newKey > currentReal && !hasMonthContent(newKey)) {
+    // Vérifier si le mois cible est immédiatement après le dernier mois avec contenu
+    // Simple règle : on autorise 1 mois "vide" au-delà du plus récent avec contenu
+    const monthsWithContent = Object.keys(allData).filter(k => hasMonthContent(k)).sort();
+    const latestWithContent = monthsWithContent.length ? monthsWithContent[monthsWithContent.length - 1] : currentReal;
+    const [ly, lm] = latestWithContent.split('-').map(Number);
+    const oneAfter = new Date(ly, lm - 1 + 1, 1);
+    const oneAfterKey = `${oneAfter.getFullYear()}-${String(oneAfter.getMonth() + 1).padStart(2, '0')}`;
+    if (newKey > oneAfterKey) {
+      showToast('Termine ton mois avant de passer au suivant', 'warning');
+      playSound('uncheck');
+      return;
+    }
+  }
+
+  currentMonthKey = newKey;
   renderAll();
   playSound('tick');
 }
@@ -575,6 +835,10 @@ function showToast(msg, type) {
 function renderList(items, containerId, key) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
+  if (!items || items.length === 0) {
+    container.innerHTML = '<div class="empty">Aucune ligne. Tape ⋮ pour en ajouter ✨</div>';
+    return;
+  }
   items.forEach((item, i) => {
     const row = document.createElement('div');
     row.className = 'row' + (item.paid ? ' paid' : '');
@@ -601,6 +865,10 @@ function renderInvestList() {
   const state = getState();
   const container = document.getElementById('invest-list');
   container.innerHTML = '';
+  if (!state.invests || state.invests.length === 0) {
+    container.innerHTML = '<div class="empty">Aucun investissement. Tape ⋮ pour en ajouter 💸</div>';
+    return;
+  }
   state.invests.forEach((item, i) => {
     const done = item.done || 0;
     const target = getInvestTarget(item);
@@ -651,26 +919,65 @@ function togglePaid(key, i, checked, el) {
   renderChart();
 }
 
+function formatShortDate(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    const shortMonths = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
+    return d.getDate() + ' ' + shortMonths[d.getMonth()];
+  } catch (e) { return ''; }
+}
+
+function todayISO() {
+  const d = new Date();
+  return d.toISOString().split('T')[0];
+}
+
+function getPlaisirTypeMeta(typeKey) {
+  const found = PLAISIR_TYPES.find(t => t.key === typeKey);
+  return found || PLAISIR_TYPES[5]; // autre par défaut
+}
+
 function renderPlaisirs() {
   const state = getState();
   const list = document.getElementById('plaisir-list');
+  const seeAllBtn = document.getElementById('plaisir-see-all');
+  const countEl = document.getElementById('plaisir-count');
   list.innerHTML = '';
   if (state.plaisirs.length === 0) {
     list.innerHTML = '<div class="empty">Aucune dépense plaisir 🌟</div>';
+    if (seeAllBtn) seeAllBtn.style.display = 'none';
     return;
   }
-  state.plaisirs.forEach((p, i) => {
+  // Afficher seulement les 3 dernières ajoutées (les plus récentes = fin du tableau)
+  const total = state.plaisirs.length;
+  const start = Math.max(0, total - 3);
+  for (let i = total - 1; i >= start; i--) {
+    const p = state.plaisirs[i];
+    const typeMeta = getPlaisirTypeMeta(p.type);
+    const dateStr = formatShortDate(p.date);
     const row = document.createElement('div');
     row.className = 'plaisir-row';
     row.innerHTML = `
-      <span>${escapeHtml(p.name)}</span>
+      <div style="flex: 1; min-width: 0;">
+        <div style="font-weight: 600; word-break: break-word;">${escapeHtml(p.name)}</div>
+        <div style="font-size: 11px; color: #b8b8b6; margin-top: 2px;">
+          <span>${typeMeta.label}</span>${dateStr ? ' · <span>' + dateStr + '</span>' : ''}
+        </div>
+      </div>
       <div style="display: flex; align-items: center; gap: 6px;">
         <span class="amount">${p.amount} €</span>
         <button class="del" onclick="removePlaisir(${i})" aria-label="Supprimer">✕</button>
       </div>
     `;
     list.appendChild(row);
-  });
+  }
+  if (total > 3) {
+    if (countEl) countEl.textContent = total;
+    if (seeAllBtn) seeAllBtn.style.display = 'block';
+  } else {
+    if (seeAllBtn) seeAllBtn.style.display = 'none';
+  }
 }
 
 function renderExtras() {
@@ -722,10 +1029,18 @@ function addPlaisir() {
   const state = getState();
   const name = document.getElementById('plaisir-name').value.trim();
   const amount = parseFloat(document.getElementById('plaisir-amount').value);
+  const typeSel = document.getElementById('plaisir-type');
+  const type = typeSel ? typeSel.value || 'autre' : 'autre';
   if (name && amount > 0) {
-    state.plaisirs.push({ name, amount: Math.round(amount) });
+    state.plaisirs.push({
+      name,
+      amount: Math.round(amount),
+      type,
+      date: todayISO()
+    });
     document.getElementById('plaisir-name').value = '';
     document.getElementById('plaisir-amount').value = '';
+    if (typeSel) typeSel.value = '';
     saveAll();
     playSound('add');
     renderPlaisirs();
@@ -734,6 +1049,10 @@ function addPlaisir() {
     const plaisirExtrasSum = state.extras.filter(e => e.target === 'Plaisir').reduce((s, e) => s + e.amount, 0);
     const plaisirBudgetEff = state.budgets.plaisirBudget + plaisirExtrasSum;
     if (total > plaisirBudgetEff) showToast('⚠️ Budget plaisir dépassé !', 'danger');
+  } else if (!amount || amount <= 0) {
+    showToast('Entre un montant', 'danger');
+  } else {
+    showToast('Entre un nom', 'danger');
   }
 }
 
@@ -794,7 +1113,7 @@ document.getElementById('essence-check').addEventListener('change', e => {
   const state = getState();
   state.essencePaid = e.target.checked;
   if (e.target.checked && state.essenceAmount === 0) {
-    state.essenceAmount = state.budgets.essenceBudget || 160;
+    state.essenceAmount = state.budgets.essenceBudget || 0;
     document.getElementById('essence-amount').value = state.essenceAmount;
   }
   if (!e.target.checked) {
@@ -811,7 +1130,7 @@ document.getElementById('essence-amount').addEventListener('input', e => {
   const state = getState();
   let val = parseFloat(e.target.value) || 0;
   if (val < 0) val = 0;
-  const budget = state.budgets.essenceBudget || 160;
+  const budget = state.budgets.essenceBudget || 0;
   const wasDone = (state.essenceAmount || 0) >= budget;
   state.essenceAmount = Math.round(val);
   state.essencePaid = val > 0;
@@ -825,7 +1144,7 @@ document.getElementById('essence-amount').addEventListener('input', e => {
 
 function updateEssenceVisual() {
   const state = getState();
-  const budget = state.budgets.essenceBudget || 160;
+  const budget = state.budgets.essenceBudget || 0;
   const isDone = (state.essenceAmount || 0) >= budget && budget > 0;
   const row = document.querySelector('.essence-row');
   if (row) row.classList.toggle('done', isDone);
@@ -883,11 +1202,15 @@ function _renderChartImpl() {
   const essBudget = document.getElementById('essence-budget-display');
   if (essBudget) essBudget.textContent = state.budgets.essenceBudget;
 
-  // Pourcentages : part de chaque catégorie sur le budget total (salaire + extras)
-  const totalRef = totalBudget || 1;
-  document.getElementById('abo-pct').textContent = Math.round((state.budgets.aboBudget / totalRef) * 100) + '%';
-  document.getElementById('plaisir-pct').textContent = Math.round((plaisirBudgetEff / totalRef) * 100) + '%';
-  document.getElementById('invest-pct').textContent = Math.round((investBudgetEff / totalRef) * 100) + '%';
+  // Pourcentages : part RÉELLE de chaque catégorie dans les dépenses effectives
+  // (si tu dépasses en plaisir, son % monte pour refléter la réalité)
+  const realTotal = totalSpent || 1;
+  const aboRealPct = totalSpent > 0 ? Math.round((aboPaid / realTotal) * 100) : Math.round((state.budgets.aboBudget / (state.budgets.salary || 1)) * 100);
+  const plaisirRealPct = totalSpent > 0 ? Math.round((plaisirSum / realTotal) * 100) : Math.round((plaisirBudgetEff / (state.budgets.salary || 1)) * 100);
+  const investRealPct = totalSpent > 0 ? Math.round((investPaid / realTotal) * 100) : Math.round((investBudgetEff / (state.budgets.salary || 1)) * 100);
+  document.getElementById('abo-pct').textContent = aboRealPct + '%';
+  document.getElementById('plaisir-pct').textContent = plaisirRealPct + '%';
+  document.getElementById('invest-pct').textContent = investRealPct + '%';
 
   document.getElementById('abo-total').textContent = Math.round(aboPaid);
   document.getElementById('invest-total').textContent = Math.round(investPaid);
@@ -925,8 +1248,98 @@ function _renderChartImpl() {
     badge.className = 'comparison same';
   }
 
-  // L'essence est fusionnée dans "Essentiels" : 4 tranches au lieu de 5
-  const data = [aboPaid, plaisirSum, investPaid, remaining];
+  // === Calcul données selon la vue ===
+  // Fonction helper : génère 6 nuances d'une couleur (de foncée à claire)
+  function makeShades(hexColor) {
+    // Convertit hex vers RGB
+    const h = hexColor.replace('#', '');
+    const r = parseInt(h.substr(0, 2), 16);
+    const g = parseInt(h.substr(2, 2), 16);
+    const b = parseInt(h.substr(4, 2), 16);
+    const shades = [];
+    for (let i = 0; i < 6; i++) {
+      // Mélange progressif avec blanc (plus l'index augmente, plus c'est clair)
+      const factor = i * 0.15;
+      const nr = Math.min(255, Math.round(r + (255 - r) * factor));
+      const ng = Math.min(255, Math.round(g + (255 - g) * factor));
+      const nb = Math.min(255, Math.round(b + (255 - b) * factor));
+      shades.push('#' + [nr, ng, nb].map(v => v.toString(16).padStart(2, '0')).join(''));
+    }
+    return shades;
+  }
+
+  const colEssentiels = getColorFor('essentiels').main;
+  const colPlaisir = getColorFor('plaisir').main;
+  const colInvest = getColorFor('invest').main;
+  const shadesEssentiels = makeShades(colEssentiels);
+  const shadesPlaisir = makeShades(colPlaisir);
+  const shadesInvest = makeShades(colInvest);
+
+  let chartLabels, chartData, chartColors;
+  const remainingForChart = Math.max(0, totalBudget - totalSpent);
+
+  if (chartView === 'detailed') {
+    chartLabels = [];
+    chartData = [];
+    chartColors = [];
+    // Essentiels : abos cochés (chacun sa nuance) + essence
+    let sIdx = 0;
+    state.abos.forEach(a => {
+      if (a.paid && a.amount > 0) {
+        chartLabels.push(a.name);
+        chartData.push(a.amount);
+        chartColors.push(shadesEssentiels[sIdx % shadesEssentiels.length]);
+        sIdx++;
+      }
+    });
+    if (essence > 0) {
+      chartLabels.push('Essence');
+      chartData.push(essence);
+      chartColors.push(shadesEssentiels[sIdx % shadesEssentiels.length]);
+    }
+    // Plaisir : par sous-type (nuances de rose)
+    const plaisirByType = {};
+    state.plaisirs.forEach(p => {
+      const k = p.type || 'autre';
+      plaisirByType[k] = (plaisirByType[k] || 0) + p.amount;
+    });
+    PLAISIR_TYPES.forEach(t => {
+      if (plaisirByType[t.key] > 0) {
+        chartLabels.push(t.label);
+        chartData.push(plaisirByType[t.key]);
+        chartColors.push(shadesPlaisir[t.shade % shadesPlaisir.length]);
+      }
+    });
+    // Investissement : chaque ligne avec sa nuance
+    let iIdx = 0;
+    state.invests.forEach(inv => {
+      if ((inv.done || 0) > 0) {
+        chartLabels.push(inv.name);
+        chartData.push(inv.done);
+        chartColors.push(shadesInvest[iIdx % shadesInvest.length]);
+        iIdx++;
+      }
+    });
+    // Reste
+    if (remainingForChart > 0) {
+      chartLabels.push('Reste');
+      chartData.push(remainingForChart);
+      chartColors.push('#555');
+    }
+    // Cas où rien : mettre au moins un point
+    if (chartData.length === 0) {
+      chartLabels = ['Rien encore'];
+      chartData = [1];
+      chartColors = ['#333'];
+    }
+  } else {
+    // Vue globale : 4 tranches
+    chartLabels = ['Essentiels', 'Plaisir', 'Investis.', 'Reste'];
+    chartData = [aboPaid, plaisirSum, investPaid, remainingForChart];
+    chartColors = [colEssentiels, colPlaisir, colInvest, '#555'];
+  }
+
+  const data = chartData;
   const spentForCenter = totalSpent;
 
   // Si Chart.js n'est pas chargé (pas d'internet), on s'arrête là.
@@ -941,12 +1354,14 @@ function _renderChartImpl() {
   }
 
   if (chart) {
+    chart.data.labels = chartLabels;
     chart.data.datasets[0].data = data;
+    chart.data.datasets[0].backgroundColor = chartColors;
     chart._centerSpent = spentForCenter;
     chart._centerBudget = totalBudget;
     chart.update('none');
   } else {
-    const colors = ['#378ADD', '#D4537E', '#1D9E75', '#555'];
+    const colors = chartColors;
 
     // Plugin: texte au centre + étiquettes avec flèches
     const centerAndLabelsPlugin = {
@@ -1031,7 +1446,7 @@ function _renderChartImpl() {
     chart = new Chart(ctxEl, {
       type: 'doughnut',
       data: {
-        labels: ['Essentiels', 'Plaisir', 'Investis.', 'Reste'],
+        labels: chartLabels,
         datasets: [{
           data: data,
           backgroundColor: colors,
@@ -1084,6 +1499,170 @@ function closeModal() {
 document.getElementById('modal-backdrop').addEventListener('click', (e) => {
   if (e.target.id === 'modal-backdrop') closeModal();
 });
+
+// ============ SÉLECTEUR DE COULEURS PAR CATÉGORIE ============
+function openColorPicker(activeCategory) {
+  const categories = [
+    { key: 'essentiels', label: '🏠 Besoins essentiels' },
+    { key: 'plaisir', label: '🎉 Plaisir' },
+    { key: 'invest', label: '💸 Investissement' },
+    { key: 'extras', label: '💜 Extras' }
+  ];
+  const activeCat = activeCategory || 'essentiels';
+
+  // Onglets catégories
+  let body = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 16px;">';
+  categories.forEach(cat => {
+    const isActive = cat.key === activeCat;
+    const currentColor = getColorFor(cat.key);
+    body += `<button
+      onclick="openColorPicker('${cat.key}')"
+      style="
+        padding: 10px 8px;
+        background: ${isActive ? currentColor.main : '#2B2B2B'};
+        border: 1.5px solid ${isActive ? '#fff' : '#363636'};
+        border-radius: 10px;
+        color: ${isActive ? '#000' : '#EFEFEF'};
+        font-family: inherit; font-size: 12px; font-weight: 600;
+        cursor: pointer; transition: all 0.15s;
+        display: flex; align-items: center; justify-content: center; gap: 5px;
+      ">
+      <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${currentColor.main}; ${currentColor.glow ? 'box-shadow: 0 0 6px ' + currentColor.main : ''}"></span>
+      ${cat.label.split(' ')[0]} ${cat.label.split(' ').slice(1).join(' ')}
+    </button>`;
+  });
+  body += '</div>';
+
+  const activeCatLabel = categories.find(c => c.key === activeCat).label;
+  body += `<div style="font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #EFEFEF;">${activeCatLabel}</div>`;
+
+  const currentCfg = (config.categoryStyles && config.categoryStyles[activeCat]) || DEFAULT_CATEGORY_STYLES[activeCat];
+  const currentHue = (typeof currentCfg === 'object') ? currentCfg.hue : DEFAULT_CATEGORY_STYLES[activeCat].hue;
+  const currentStyle = (typeof currentCfg === 'object') ? currentCfg.style : 'standard';
+
+  // Sélecteur de style (Standard / Néon / Pastel)
+  body += '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 12px;">';
+  ['standard', 'neon', 'pastel'].forEach(style => {
+    const selected = style === currentStyle;
+    const label = style === 'standard' ? 'Standard' : style === 'neon' ? '✨ Néon' : 'Pastel';
+    body += `<button
+      onclick="pickColor('${activeCat}', '${currentHue}', '${style}')"
+      style="
+        padding: 8px 6px;
+        background: ${selected ? '#4E9BE3' : '#2B2B2B'};
+        border: 1px solid ${selected ? '#4E9BE3' : '#363636'};
+        border-radius: 8px;
+        color: ${selected ? '#fff' : '#B8B8B6'};
+        font-family: inherit; font-size: 12px; font-weight: 600;
+        cursor: pointer; transition: all 0.15s;
+      ">${label}</button>`;
+  });
+  body += '</div>';
+
+  // Grille des 8 couleurs
+  body += '<div style="font-size: 12px; color: #8F8F8F; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600;">Couleur</div>';
+  body += '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">';
+  COLOR_HUES.forEach(hueDef => {
+    const preview = COLOR_PALETTES[hueDef.key][currentStyle];
+    const selected = hueDef.key === currentHue;
+    const glow = preview.glow ? `box-shadow: 0 0 10px ${preview.main};` : '';
+    body += `<button
+      onclick="pickColor('${activeCat}', '${hueDef.key}', '${currentStyle}')"
+      style="
+        padding: 10px 4px;
+        background: ${selected ? preview.main : '#2B2B2B'};
+        border: 2px solid ${selected ? '#fff' : '#363636'};
+        border-radius: 10px;
+        color: ${selected ? '#000' : '#EFEFEF'};
+        font-family: inherit; font-size: 10px; font-weight: 600;
+        cursor: pointer; transition: all 0.15s;
+        display: flex; flex-direction: column; align-items: center; gap: 5px;
+        ${selected ? glow : ''}
+      ">
+      <span style="display: inline-block; width: 22px; height: 22px; border-radius: 50%; background: ${preview.main}; ${preview.glow ? 'box-shadow: 0 0 8px ' + preview.main : ''}"></span>
+      <span>${hueDef.label}</span>
+    </button>`;
+  });
+  body += '</div>';
+
+  openModal('🎨 Palette de couleurs', body, { type: 'colors', activeCat });
+}
+
+function pickColor(category, hue, style) {
+  if (!config.categoryStyles) config.categoryStyles = { ...DEFAULT_CATEGORY_STYLES };
+  config.categoryStyles[category] = { hue, style };
+  saveConfig();
+  applyCategoryColors();
+  if (typeof chart !== 'undefined' && chart) {
+    try { chart.destroy(); } catch (e) {}
+    chart = null;
+  }
+  renderAll();
+  // Réouvrir le picker sur la même catégorie pour montrer le nouveau choix
+  openColorPicker(category);
+}
+
+// ============ SÉLECTEUR DE MOIS ============
+function openMonthPicker() {
+  const currentReal = getCurrentRealMonthKey();
+  // Récupère tous les mois avec du contenu + le mois en cours
+  const monthsSet = new Set();
+  monthsSet.add(currentReal);
+  Object.keys(allData).forEach(k => {
+    if (hasMonthContent(k)) monthsSet.add(k);
+  });
+  const months = Array.from(monthsSet).sort().reverse(); // du plus récent au plus ancien
+
+  let body = '<p class="muted" style="margin: 0 0 12px; text-transform: none; letter-spacing: 0; font-weight: normal;">Sélectionne un mois pour l\'afficher.</p>';
+  body += '<div style="display: flex; flex-direction: column; gap: 8px;">';
+
+  months.forEach(key => {
+    const [y, m] = key.split('-').map(Number);
+    const label = monthNames[m - 1] + ' ' + y;
+    const isSelected = key === currentMonthKey;
+    const isCurrent = key === currentReal;
+    const s = allData[key];
+    let subLabel = '';
+    if (isCurrent && !hasMonthContent(key)) {
+      subLabel = 'Mois en cours';
+    } else if (s) {
+      const totalSpent = (s.abos || []).filter(a => a.paid).reduce((sum, a) => sum + a.amount, 0)
+        + (s.invests || []).reduce((sum, a) => sum + (a.done || 0), 0)
+        + (s.plaisirs || []).reduce((sum, p) => sum + p.amount, 0)
+        + (s.essenceAmount || 0);
+      subLabel = totalSpent + ' € dépensés';
+    }
+
+    body += `<button
+      onclick="pickMonth('${key}')"
+      style="
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 14px 16px;
+        background: ${isSelected ? '#4E9BE3' : '#2B2B2B'};
+        border: 1px solid ${isSelected ? '#4E9BE3' : '#363636'};
+        border-radius: 10px; cursor: pointer;
+        color: ${isSelected ? '#fff' : '#EFEFEF'};
+        font-family: inherit; text-align: left;
+        transition: all 0.15s;
+      ">
+      <div>
+        <div style="font-size: 15px; font-weight: 600; text-transform: capitalize;">${label}</div>
+        <div style="font-size: 11px; opacity: 0.7; margin-top: 2px;">${subLabel}</div>
+      </div>
+      ${isCurrent ? '<span style="font-size: 11px; padding: 3px 8px; background: rgba(255,255,255,0.15); border-radius: 6px; font-weight: 600;">AUJOURD\'HUI</span>' : ''}
+    </button>`;
+  });
+
+  body += '</div>';
+  openModal('📅 Choisir un mois', body, { type: 'month-picker' });
+}
+
+function pickMonth(key) {
+  currentMonthKey = key;
+  closeModal();
+  renderAll();
+  playSound('tick');
+}
 
 // Édition du budget global (salaire) et budgets de catégories
 function openBudgetEdit(type) {
@@ -1248,7 +1827,111 @@ function renderAll() {
   saveAll();
 }
 
+applyCategoryColors();
 renderAll();
+
+// ============ VUE PLEIN ÉCRAN PLAISIRS ============
+function openPlaisirFullView() {
+  const state = getState();
+  const backdrop = document.getElementById('fullview-backdrop');
+  const statsEl = document.getElementById('fullview-stats');
+  const content = document.getElementById('fullview-content');
+  if (!backdrop || !content) return;
+
+  // Grouper par type
+  const byType = {};
+  PLAISIR_TYPES.forEach(t => { byType[t.key] = []; });
+  state.plaisirs.forEach((p, idx) => {
+    const key = p.type || 'autre';
+    if (!byType[key]) byType[key] = [];
+    byType[key].push({ ...p, _idx: idx });
+  });
+
+  // Stats globales
+  const total = state.plaisirs.reduce((s, p) => s + p.amount, 0);
+  const plaisirExtras = state.extras.filter(e => e.target === 'Plaisir').reduce((s, e) => s + e.amount, 0);
+  const budget = state.budgets.plaisirBudget + plaisirExtras;
+  const avg = state.plaisirs.length ? Math.round(total / state.plaisirs.length) : 0;
+  const topType = Object.entries(byType)
+    .map(([k, arr]) => ({ key: k, sum: arr.reduce((s, p) => s + p.amount, 0) }))
+    .sort((a, b) => b.sum - a.sum)[0];
+  const topLabel = topType && topType.sum > 0 ? getPlaisirTypeMeta(topType.key).label : '—';
+
+  statsEl.innerHTML = `
+    <div class="fullview-stat-card"><div class="stat-label">Total dépensé</div><div class="stat-value">${total} €</div></div>
+    <div class="fullview-stat-card"><div class="stat-label">Budget</div><div class="stat-value">${budget} €</div></div>
+    <div class="fullview-stat-card"><div class="stat-label">Nb dépenses</div><div class="stat-value">${state.plaisirs.length}</div></div>
+    <div class="fullview-stat-card"><div class="stat-label">Top catégorie</div><div class="stat-value" style="font-size: 15px;">${topLabel}</div></div>
+  `;
+
+  // Contenu par type
+  content.innerHTML = '';
+  PLAISIR_TYPES.forEach(t => {
+    const items = byType[t.key];
+    if (!items || items.length === 0) return;
+    const sum = items.reduce((s, p) => s + p.amount, 0);
+    const header = document.createElement('div');
+    header.className = 'fullview-type-header';
+    header.innerHTML = `<span>${escapeHtml(t.label)}</span><span>${sum} €  (${items.length})</span>`;
+    content.appendChild(header);
+    // Trier par date décroissante
+    items.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    items.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'fullview-plaisir-row';
+      row.innerHTML = `
+        <div class="plaisir-info">
+          <div class="plaisir-name-line">${escapeHtml(p.name)}</div>
+          <div class="plaisir-date">${formatShortDate(p.date) || '—'}</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="amount">${p.amount} €</span>
+          <button class="del" onclick="removePlaisirByIndex(${p._idx})" aria-label="Supprimer">✕</button>
+        </div>
+      `;
+      content.appendChild(row);
+    });
+  });
+
+  backdrop.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePlaisirFullView() {
+  const backdrop = document.getElementById('fullview-backdrop');
+  if (backdrop) backdrop.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+function removePlaisirByIndex(idx) {
+  const state = getState();
+  if (state.plaisirs[idx]) {
+    state.plaisirs.splice(idx, 1);
+    saveAll();
+    playSound('delete');
+    renderPlaisirs();
+    renderChart();
+    openPlaisirFullView(); // re-render la vue
+  }
+}
+
+// ============ BASCULE GRAPHIQUE VUE GLOBALE / DÉTAILLÉE ============
+let chartView = 'global'; // 'global' | 'detailed'
+
+function toggleChartView() {
+  chartView = (chartView === 'global') ? 'detailed' : 'global';
+  const btn = document.getElementById('chart-toggle');
+  if (btn) {
+    btn.textContent = (chartView === 'global') ? '📊 Détail' : '🍩 Global';
+    btn.classList.toggle('active', chartView === 'detailed');
+  }
+  // Détruire le chart pour forcer la recréation avec les nouvelles données
+  if (typeof chart !== 'undefined' && chart) {
+    try { chart.destroy(); } catch (e) {}
+    chart = null;
+  }
+  renderChart();
+}
 
 document.addEventListener('touchstart', function unlock() {
   getAudioCtx();
