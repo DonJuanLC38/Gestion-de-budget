@@ -595,6 +595,17 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="confirm-backdrop" style="z-index: 200;">
+  <div class="modal" id="confirm-modal" style="max-width: 340px;">
+    <h4 id="confirm-title" style="margin: 0 0 12px;">Confirmation</h4>
+    <p id="confirm-message" style="margin: 0 0 20px; color: #ccc; font-size: 15px;"></p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeConfirm(false)">Annuler</button>
+      <button class="btn-save" id="confirm-ok-btn" onclick="closeConfirm(true)" style="background: #e24b4a;">Supprimer</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -853,13 +864,14 @@ function changeMonth(delta) {
 }
 
 function resetMonth() {
-  if (confirm(`Réinitialiser ${getMonthLabel()} ?`)) {
+  customConfirm(`Réinitialiser ${getMonthLabel()} ?`, (ok) => {
+    if (!ok) return;
     allData[currentMonthKey] = defaultMonthState();
     saveAll();
     renderAll();
     showToast('Mois réinitialisé', 'warning');
     playSound('reset');
-  }
+  }, 'Réinitialiser');
 }
 
 function getMonthLabel() {
@@ -1154,11 +1166,16 @@ function addPlaisir() {
 
 function removePlaisir(i) {
   const state = getState();
-  state.plaisirs.splice(i, 1);
-  saveAll();
-  playSound('delete');
-  renderPlaisirs();
-  renderChart();
+  const item = state.plaisirs[i];
+  const name = item?.name || 'ce plaisir';
+  customConfirm(`Êtes-vous sûr de vouloir supprimer "${name}" ?`, (ok) => {
+    if (!ok) return;
+    state.plaisirs.splice(i, 1);
+    saveAll();
+    playSound('delete');
+    renderPlaisirs();
+    renderChart();
+  });
 }
 
 function addExtra() {
@@ -1192,12 +1209,17 @@ function addExtra() {
 
 function removeExtra(i) {
   const state = getState();
-  state.extras.splice(i, 1);
-  saveAll();
-  playSound('delete');
-  renderExtras();
-  renderInvestList();
-  renderChart();
+  const item = state.extras[i];
+  const name = item?.name || 'cet extra';
+  customConfirm(`Êtes-vous sûr de vouloir supprimer "${name}" ?`, (ok) => {
+    if (!ok) return;
+    state.extras.splice(i, 1);
+    saveAll();
+    playSound('delete');
+    renderExtras();
+    renderInvestList();
+    renderChart();
+  });
 }
 
 document.getElementById('plaisir-amount').addEventListener('keydown', e => { if (e.key === 'Enter') addPlaisir(); });
@@ -1647,6 +1669,28 @@ function closeModal() {
   modalContext = null;
 }
 
+// Modal de confirmation custom (marche en PWA iOS contrairement à confirm())
+let _confirmCallback = null;
+function customConfirm(message, callback, okLabel) {
+  document.getElementById('confirm-message').textContent = message;
+  document.getElementById('confirm-ok-btn').textContent = okLabel || 'Supprimer';
+  document.getElementById('confirm-backdrop').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  _confirmCallback = callback;
+}
+function closeConfirm(confirmed) {
+  document.getElementById('confirm-backdrop').classList.remove('show');
+  document.body.style.overflow = '';
+  if (_confirmCallback) {
+    const cb = _confirmCallback;
+    _confirmCallback = null;
+    cb(confirmed);
+  }
+}
+document.getElementById('confirm-backdrop').addEventListener('click', (e) => {
+  if (e.target.id === 'confirm-backdrop') closeConfirm(false);
+});
+
 document.getElementById('modal-backdrop').addEventListener('click', (e) => {
   if (e.target.id === 'modal-backdrop') closeModal();
 });
@@ -1948,7 +1992,13 @@ function openListEdit(key, label) {
 
 function modalDelItem(i) {
   const row = document.querySelector(`#modal-items .modal-row[data-i="${i}"]`);
-  if (row) row.remove();
+  if (row) {
+    const nameInput = row.querySelector('input[data-field="name"]');
+    const name = nameInput?.value?.trim() || 'cet élément';
+    customConfirm(`Êtes-vous sûr de vouloir supprimer "${name}" ?`, (ok) => {
+      if (ok) row.remove();
+    });
+  }
 }
 
 function modalAddItem() {
@@ -1961,7 +2011,7 @@ function modalAddItem() {
   div.innerHTML = `
     <input type="text" placeholder="Nom" data-field="name" />
     <input type="number" placeholder="€" min="0" step="5" inputmode="numeric" data-field="amount" />
-    <button class="del-item" onclick="this.parentElement.remove()" aria-label="Supprimer">✕</button>
+    <button class="del-item" onclick="var r=this.parentElement; var n=r.querySelector('input[data-field=&quot;name&quot;]').value.trim()||'cet élément'; customConfirm('Êtes-vous sûr de vouloir supprimer &quot;'+n+'&quot; ?', function(ok){ if(ok) r.remove(); })" aria-label="Supprimer">✕</button>
   `;
   container.appendChild(div);
   div.querySelector('input[data-field="name"]').focus();
@@ -2328,12 +2378,16 @@ function openMonthReport() {
 function removePlaisirByIndex(idx) {
   const state = getState();
   if (state.plaisirs[idx]) {
-    state.plaisirs.splice(idx, 1);
-    saveAll();
-    playSound('delete');
-    renderPlaisirs();
-    renderChart();
-    openPlaisirFullView(); // re-render la vue
+    const name = state.plaisirs[idx].name || 'ce plaisir';
+    customConfirm(`Êtes-vous sûr de vouloir supprimer "${name}" ?`, (ok) => {
+      if (!ok) return;
+      state.plaisirs.splice(idx, 1);
+      saveAll();
+      playSound('delete');
+      renderPlaisirs();
+      renderChart();
+      openPlaisirFullView(); // re-render la vue
+    });
   }
 }
 
